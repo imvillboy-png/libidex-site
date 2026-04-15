@@ -2,8 +2,9 @@
 header('Content-Type: application/json; charset=utf-8');
 
 $host = getenv('DB_HOST') ?: 'localhost';
+$port = getenv('DB_PORT') ?: '5432';
 $dbname = getenv('DB_NAME') ?: 'libidex_db';
-$username = getenv('DB_USER') ?: 'root';
+$username = getenv('DB_USER') ?: 'libidex_db_user';
 $password = getenv('DB_PASS') ?: '';
 
 $name = isset($_POST['name']) ? trim($_POST['name']) : '';
@@ -27,13 +28,24 @@ if (!preg_match('/^\+91[0-9]{10}$/', $phone)) {
 }
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+    $pdo = new PDO($dsn, $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
     $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_campaign, utm_content, utm_medium, utm_source, product, status) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+                           VALUES (:name, :phone, :country, :clickid, :utm_campaign, :utm_content, :utm_medium, :utm_source, :product, 'pending')");
     
-    $stmt->execute([$name, $phone, $country, $clickid, $utm_campaign, $utm_content, $utm_medium, $utm_source, $product]);
+    $stmt->execute([
+        ':name' => $name,
+        ':phone' => $phone,
+        ':country' => $country,
+        ':clickid' => $clickid,
+        ':utm_campaign' => $utm_campaign,
+        ':utm_content' => $utm_content,
+        ':utm_medium' => $utm_medium,
+        ':utm_source' => $utm_source,
+        ':product' => $product
+    ]);
     
     echo json_encode(['success' => true, 'message' => 'आपका ऑर्डर सफलतापूर्वक प्राप्त हो गया है। जल्द ही हम आपसे संपर्क करेंगे।']);
     

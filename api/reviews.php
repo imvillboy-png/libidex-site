@@ -10,8 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $host = getenv('DB_HOST') ?: 'localhost';
+$port = getenv('DB_PORT') ?: '5432';
 $dbname = getenv('DB_NAME') ?: 'libidex_db';
-$username = getenv('DB_USER') ?: 'root';
+$username = getenv('DB_USER') ?: 'libidex_db_user';
 $password = getenv('DB_PASS') ?: '';
 
 $defaultReviews = [
@@ -39,7 +40,8 @@ $defaultReviews = [
 ];
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+    $pdo = new PDO($dsn, $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
     $stmt = $pdo->query("SELECT id, name, age, image, review_text FROM reviews WHERE status = 'active' ORDER BY sort_order ASC, id DESC");

@@ -10,8 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $host = getenv('DB_HOST') ?: 'localhost';
+$port = getenv('DB_PORT') ?: '5432';
 $dbname = getenv('DB_NAME') ?: 'libidex_db';
-$username = getenv('DB_USER') ?: 'root';
+$username = getenv('DB_USER') ?: 'libidex_db_user';
 $password = getenv('DB_PASS') ?: '';
 
 $defaultProduct = [
@@ -29,7 +30,8 @@ $defaultProduct = [
 ];
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+    $pdo = new PDO($dsn, $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
     $stmt = $pdo->query("SELECT id, name, name_hindi, description, description_hindi, price, old_price, image, image_secondary, stock, status FROM products WHERE status = 'active' LIMIT 1");
