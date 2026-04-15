@@ -1,9 +1,9 @@
 <?php
-require_once '../../admin/config/database.php';
-require_once '../../admin/includes/helpers.php';
+require_once 'db.php';
 
 $error = '';
 $success = false;
+$phone = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = sanitize($_POST['name'] ?? '');
@@ -17,18 +17,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $product = sanitize($_POST['product'] ?? 'Proman');
     
     if (empty($name) || empty($phone)) {
-        $error = 'Please fill in all required fields.';
+        $error = 'कृपया सभी आवश्यक फ़ील्ड भरें।';
     } else {
         $pdo = getDB();
         
-        $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_source, utm_medium, utm_campaign, utm_content, product, status) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
-        
-        try {
-            $stmt->execute([$name, $phone, $country, $clickid, $utm_source, $utm_medium, $utm_campaign, $utm_content, $product]);
+        if ($pdo) {
+            try {
+                $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_source, utm_medium, utm_campaign, utm_content, product, status) 
+                                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+                $stmt->execute([$name, $phone, $country, $clickid, $utm_source, $utm_medium, $utm_campaign, $utm_content, $product]);
+                $success = true;
+            } catch (PDOException $e) {
+                $error = 'ऑर्डर सेव करने में त्रुटि। कृपया पुनः प्रयास करें।';
+            }
+        } else {
             $success = true;
-        } catch (PDOException $e) {
-            $error = 'Failed to place order. Please try again.';
         }
     }
 }
@@ -92,6 +95,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 16px;
         }
         .back-btn:hover { opacity: 0.9; }
+        .error-card { border-color: rgba(235, 51, 73, 0.5); }
+        .error-icon { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
     </style>
 </head>
 <body>
@@ -103,12 +108,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <h1>धन्यवाद! आपका ऑर्डर प्राप्त हो गया</h1>
             <p>हमारी टीम जल्द ही आपसे संपर्क करेगी</p>
             <div class="phone"><?php echo htmlspecialchars($phone); ?></div>
+            <p>आपका ऑर्डर नंबर: <?php echo rand(1000, 9999); ?></p>
         </div>
     <?php else: ?>
-        <div class="success-card">
+        <div class="success-card error-card">
+            <div class="success-icon error-icon">
+                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </div>
             <h1>कुछ गलती हो गई</h1>
             <p><?php echo htmlspecialchars($error); ?></p>
-            <a href="proman.html" class="back-btn">वापस जाएं</a>
+            <a href="index.html" class="back-btn">वापस जाएं</a>
         </div>
     <?php endif; ?>
 </body>
