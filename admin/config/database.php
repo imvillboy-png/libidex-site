@@ -1,6 +1,6 @@
 <?php
 $db_type = getenv('DB_TYPE') ?: 'sqlite';
-$data_dir = __DIR__ . '/../data';
+$data_dir = '/tmp/libidex';
 $db_file = $data_dir . '/data.db';
 
 if (!is_dir($data_dir)) {
