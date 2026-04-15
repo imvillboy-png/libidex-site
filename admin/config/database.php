@@ -1,10 +1,10 @@
 <?php
-$db_type = getenv('DB_TYPE') ?: 'pgsql';
+$db_type = getenv('DB_TYPE') ?: 'sqlite';
 $data_dir = __DIR__ . '/../data';
 $db_file = $data_dir . '/data.db';
 
 if (!is_dir($data_dir)) {
-    mkdir($data_dir, 0755, true);
+    @mkdir($data_dir, 0755, true);
 }
 
 class Database {
@@ -15,10 +15,10 @@ class Database {
         global $db_type, $db_file, $data_dir;
         
         if (!is_dir($data_dir)) {
-            mkdir($data_dir, 0755, true);
+            @mkdir($data_dir, 0755, true);
         }
         
-        $db_type = getenv('DB_TYPE') ?: 'pgsql';
+        $db_type = getenv('DB_TYPE') ?: 'sqlite';
         $db_file = $data_dir . '/data.db';
         
         if ($db_type === 'pgsql') {
@@ -26,11 +26,13 @@ class Database {
             $port = getenv('DB_PORT') ?: '5432';
             $dbname = getenv('DB_NAME') ?: 'libidex_db';
             $username = getenv('DB_USER') ?: 'libidex_db_user';
-            $password = getenv('DB_PASS') ?: '905313';
+            $password = getenv('DB_PASS') ?: '';
             
             try {
-                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
-                $this->pdo = new PDO($dsn, $username, $password);
+                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
+                $this->pdo = new PDO($dsn, $username, $password, array(
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                ));
             } catch (PDOException $e) {
                 error_log("PostgreSQL connection failed: " . $e->getMessage());
                 $this->pdo = new PDO("sqlite:$db_file");
@@ -60,7 +62,7 @@ function getDB() {
 
 function initDB() {
     $pdo = getDB();
-    $db_type = getenv('DB_TYPE') ?: 'pgsql';
+    $db_type = getenv('DB_TYPE') ?: 'sqlite';
     
     if ($db_type === 'pgsql') {
         $pdo->exec("CREATE TABLE IF NOT EXISTS products (
