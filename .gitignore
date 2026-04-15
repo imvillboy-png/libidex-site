@@ -5,3 +5,8 @@ Thumbs.db
 node_modules/
 .vscode/
 .idea/
+data/
+data.db
+setup.php
+setup-db.php
+database-setup.sql

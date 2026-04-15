@@ -9,11 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$host = getenv('DB_HOST') ?: 'localhost';
-$port = getenv('DB_PORT') ?: '5432';
-$dbname = getenv('DB_NAME') ?: 'libidex_db';
-$username = getenv('DB_USER') ?: 'libidex_db_user';
-$password = getenv('DB_PASS') ?: '';
+$db_file = __DIR__ . '/../data.db';
 
 $defaultReviews = [
     [
@@ -40,18 +36,24 @@ $defaultReviews = [
 ];
 
 try {
-    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
-    $pdo = new PDO($dsn, $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    $stmt = $pdo->query("SELECT id, name, age, image, review_text FROM reviews WHERE status = 'active' ORDER BY sort_order ASC, id DESC");
-    $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    if (!empty($reviews)) {
-        echo json_encode([
-            'success' => true,
-            'reviews' => $reviews
-        ]);
+    if (file_exists($db_file)) {
+        $pdo = new PDO("sqlite:$db_file");
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        $stmt = $pdo->query("SELECT * FROM reviews WHERE status = 'active' ORDER BY sort_order ASC, id DESC");
+        $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (!empty($reviews)) {
+            echo json_encode([
+                'success' => true,
+                'reviews' => $reviews
+            ]);
+        } else {
+            echo json_encode([
+                'success' => true,
+                'reviews' => $defaultReviews
+            ]);
+        }
     } else {
         echo json_encode([
             'success' => true,

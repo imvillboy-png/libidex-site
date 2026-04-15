@@ -9,11 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$host = getenv('DB_HOST') ?: 'localhost';
-$port = getenv('DB_PORT') ?: '5432';
-$dbname = getenv('DB_NAME') ?: 'libidex_db';
-$username = getenv('DB_USER') ?: 'libidex_db_user';
-$password = getenv('DB_PASS') ?: '';
+$db_file = __DIR__ . '/../data.db';
 
 $defaultProduct = [
     'id' => 1,
@@ -30,21 +26,24 @@ $defaultProduct = [
 ];
 
 try {
-    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
-    $pdo = new PDO($dsn, $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    $stmt = $pdo->query("SELECT id, name, name_hindi, description, description_hindi, price, old_price, image, image_secondary, stock, status FROM products WHERE status = 'active' LIMIT 1");
-    $product = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if ($product) {
-        $product['price'] = floatval($product['price']);
-        $product['old_price'] = $product['old_price'] ? floatval($product['old_price']) : null;
-        $product['stock'] = intval($product['stock']);
-        echo json_encode([
-            'success' => true,
-            'product' => $product
-        ]);
+    if (file_exists($db_file)) {
+        $pdo = new PDO("sqlite:$db_file");
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        $stmt = $pdo->query("SELECT * FROM products WHERE status = 'active' LIMIT 1");
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($product) {
+            echo json_encode([
+                'success' => true,
+                'product' => $product
+            ]);
+        } else {
+            echo json_encode([
+                'success' => true,
+                'product' => $defaultProduct
+            ]);
+        }
     } else {
         echo json_encode([
             'success' => true,
