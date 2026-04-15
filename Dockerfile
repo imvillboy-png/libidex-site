@@ -5,6 +5,10 @@ RUN apt-get update && apt-get install -y libpq-dev \
 
 COPY . /var/www/html/
 
+RUN mkdir -p /var/www/html/data \
+    && chown -R www-data:www-data /var/www/html/data \
+    && chmod -R 755 /var/www/html/data
+
 RUN a2enmod rewrite
 
 EXPOSE 80
