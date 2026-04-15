@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: text/plain; charset=utf-8');
 
-$host = 'dpg-d7ftuuernols73e56vc0-a.oregon-postgres.render.com';
+$host = 'dpg-d7ftuuernols73e56vc0-a';
 $port = '5432';
 $dbname = 'libidex_db';
 $username = 'libidex_db_user';
