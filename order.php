@@ -1,7 +1,28 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
+$db_type = getenv('DB_TYPE') ?: 'sqlite';
 $db_file = __DIR__ . '/data.db';
+
+function getDB() {
+    global $db_type, $db_file;
+    
+    if ($db_type === 'pgsql') {
+        $host = getenv('DB_HOST') ?: 'dpg-d7ftuuernols73e56vc0-a.oregon-postgres.render.com';
+        $port = getenv('DB_PORT') ?: '5432';
+        $dbname = getenv('DB_NAME') ?: 'libidex_db';
+        $username = getenv('DB_USER') ?: 'libidex_db_user';
+        $password = getenv('DB_PASS') ?: '905313';
+        
+        $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+        $pdo = new PDO($dsn, $username, $password);
+    } else {
+        $pdo = new PDO("sqlite:$db_file");
+    }
+    
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    return $pdo;
+}
 
 $name = isset($_POST['name']) ? trim($_POST['name']) : '';
 $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
@@ -24,31 +45,7 @@ if (!preg_match('/^\+91[0-9]{10}$/', $phone)) {
 }
 
 try {
-    if (!file_exists(__DIR__ . '/data')) {
-        mkdir(__DIR__ . '/data', 0777, true);
-    }
-    
-    if (!file_exists($db_file)) {
-        $pdo = new PDO("sqlite:$db_file");
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            phone TEXT,
-            country TEXT DEFAULT 'IN',
-            clickid TEXT,
-            utm_campaign TEXT,
-            utm_content TEXT,
-            utm_medium TEXT,
-            utm_source TEXT,
-            product TEXT DEFAULT 'Libidex',
-            status TEXT DEFAULT 'pending',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )");
-    } else {
-        $pdo = new PDO("sqlite:$db_file");
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    }
+    $pdo = getDB();
     
     $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_campaign, utm_content, utm_medium, utm_source, product, status) 
                            VALUES (:name, :phone, :country, :clickid, :utm_campaign, :utm_content, :utm_medium, :utm_source, :product, 'pending')");
