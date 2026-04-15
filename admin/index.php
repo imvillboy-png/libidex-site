@@ -2,237 +2,750 @@
 session_start();
 
 $db_file = __DIR__ . '/../data.db';
+
+function getDB() {
+    global $db_file;
+    try {
+        $pdo = new PDO("sqlite:$db_file");
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        return $pdo;
+    } catch (PDOException $e) {
+        die("Database error: " . $e->getMessage());
+    }
+}
+
+function initDB() {
+    $pdo = getDB();
+    
+    $pdo->exec("CREATE TABLE IF NOT EXISTS products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT DEFAULT 'Libidex',
+        name_hindi TEXT,
+        description TEXT,
+        description_hindi TEXT,
+        price REAL DEFAULT 2490.00,
+        old_price REAL,
+        image TEXT DEFAULT 'product-1.png',
+        image_secondary TEXT DEFAULT 'product-2.png',
+        status TEXT DEFAULT 'active',
+        stock INTEGER DEFAULT 100,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    
+    $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        phone TEXT,
+        country TEXT DEFAULT 'IN',
+        clickid TEXT,
+        utm_campaign TEXT,
+        utm_content TEXT,
+        utm_medium TEXT,
+        utm_source TEXT,
+        product TEXT DEFAULT 'Libidex',
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    
+    $pdo->exec("CREATE TABLE IF NOT EXISTS reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        age INTEGER,
+        image TEXT DEFAULT 'live-1.jpg',
+        review_text TEXT,
+        status TEXT DEFAULT 'active',
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    
+    $check = $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
+    if ($check == 0) {
+        $pdo->exec("INSERT INTO products (name, name_hindi, description, description_hindi, price, old_price, image, status) 
+        VALUES ('Libidex', 'अपनी क्षमता को उजागर करें और अपना आत्मविश्वास पुनः प्राप्त करें!', 
+        'Natural male enhancement capsules for better performance', 
+        'पुरुषों के स्वास्थ्य के लिए प्राकृतिक कैप्सूल', 
+        2490.00, 4980.00, 'product-1.png', 'active')");
+    }
+    
+    $check = $pdo->query("SELECT COUNT(*) FROM reviews")->fetchColumn();
+    if ($check == 0) {
+        $pdo->exec("INSERT INTO reviews (name, age, image, review_text, status, sort_order) VALUES
+        ('राजेश शर्मा', 42, 'live-1.jpg', 'बहुत बढ़िया उत्पाद! 2 हफ्ते में ही असर दिखा।', 'active', 1),
+        ('अमित वर्मा', 38, 'live-2.jpg', 'आत्मविश्वास वापस आ गया। Highly recommended!', 'active', 2),
+        ('संजय पटेल', 45, 'live-3.jpg', 'पत्नी भी खुश हैं। अब कोई परेशानी नहीं।', 'active', 3)");
+    }
+}
+
+initDB();
+
 $message = '';
 $message_type = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
-        if ($_POST['action'] === 'login') {
-            $username = $_POST['username'] ?? '';
-            $password = $_POST['password'] ?? '';
-            
-            if ($username === 'admin' && $password === 'admin123') {
-                $_SESSION['admin_logged_in'] = true;
+        $pdo = getDB();
+        
+        switch ($_POST['action']) {
+            case 'login':
+                $username = $_POST['username'] ?? '';
+                $password = $_POST['password'] ?? '';
+                if ($username === 'admin' && $password === 'admin123') {
+                    $_SESSION['admin_logged_in'] = true;
+                    header('Location: index.php');
+                    exit;
+                } else {
+                    $message = 'Invalid credentials!';
+                    $message_type = 'error';
+                }
+                break;
+                
+            case 'logout':
+                session_destroy();
                 header('Location: index.php');
                 exit;
-            } else {
-                $message = 'Invalid credentials!';
-                $message_type = 'error';
-            }
-        } elseif ($_POST['action'] === 'logout') {
-            session_destroy();
-            header('Location: index.php');
-            exit;
-        } elseif ($_POST['action'] === 'update_status') {
-            $order_id = $_POST['order_id'] ?? 0;
-            $new_status = $_POST['new_status'] ?? 'pending';
-            
-            try {
-                $pdo = new PDO("sqlite:$db_file");
-                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
-                $stmt->execute([$new_status, $order_id]);
-                $message = 'Status updated successfully!';
+                
+            case 'update_product':
+                $stmt = $pdo->prepare("UPDATE products SET name=?, name_hindi=?, description=?, description_hindi=?, price=?, old_price=?, image=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?");
+                $stmt->execute([
+                    $_POST['name'],
+                    $_POST['name_hindi'],
+                    $_POST['description'],
+                    $_POST['description_hindi'],
+                    floatval($_POST['price']),
+                    floatval($_POST['old_price']),
+                    $_POST['image'],
+                    $_POST['status'],
+                    intval($_POST['id'])
+                ]);
+                $message = 'Product updated successfully!';
                 $message_type = 'success';
-            } catch (PDOException $e) {
-                $message = 'Error updating status';
-                $message_type = 'error';
-            }
-        } elseif ($_POST['action'] === 'delete_order') {
-            $order_id = $_POST['order_id'] ?? 0;
-            
-            try {
-                $pdo = new PDO("sqlite:$db_file");
-                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                $stmt = $pdo->prepare("DELETE FROM orders WHERE id = ?");
-                $stmt->execute([$order_id]);
+                break;
+                
+            case 'add_review':
+                $stmt = $pdo->prepare("INSERT INTO reviews (name, age, image, review_text, status, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->execute([
+                    $_POST['name'],
+                    intval($_POST['age']),
+                    $_POST['image'],
+                    $_POST['review_text'],
+                    $_POST['status'],
+                    intval($_POST['sort_order'])
+                ]);
+                $message = 'Review added successfully!';
+                $message_type = 'success';
+                break;
+                
+            case 'update_review':
+                $stmt = $pdo->prepare("UPDATE reviews SET name=?, age=?, image=?, review_text=?, status=?, sort_order=? WHERE id=?");
+                $stmt->execute([
+                    $_POST['name'],
+                    intval($_POST['age']),
+                    $_POST['image'],
+                    $_POST['review_text'],
+                    $_POST['status'],
+                    intval($_POST['sort_order']),
+                    intval($_POST['id'])
+                ]);
+                $message = 'Review updated successfully!';
+                $message_type = 'success';
+                break;
+                
+            case 'delete_review':
+                $stmt = $pdo->prepare("DELETE FROM reviews WHERE id=?");
+                $stmt->execute([intval($_POST['id'])]);
+                $message = 'Review deleted successfully!';
+                $message_type = 'success';
+                break;
+                
+            case 'update_order_status':
+                $stmt = $pdo->prepare("UPDATE orders SET status=? WHERE id=?");
+                $stmt->execute([$_POST['status'], intval($_POST['id'])]);
+                $message = 'Order status updated!';
+                $message_type = 'success';
+                break;
+                
+            case 'delete_order':
+                $stmt = $pdo->prepare("DELETE FROM orders WHERE id=?");
+                $stmt->execute([intval($_POST['id'])]);
                 $message = 'Order deleted successfully!';
                 $message_type = 'success';
-            } catch (PDOException $e) {
-                $message = 'Error deleting order';
-                $message_type = 'error';
-            }
+                break;
         }
     }
 }
 
 $is_logged_in = $_SESSION['admin_logged_in'] ?? false;
-$orders = [];
-
-if ($is_logged_in && file_exists($db_file)) {
-    try {
-        $pdo = new PDO("sqlite:$db_file");
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $orders = $pdo->query("SELECT * FROM orders ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        $message = 'Database error: ' . $e->getMessage();
-        $message_type = 'error';
-    }
-}
+$page = $_GET['page'] ?? 'dashboard';
 ?>
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Libidex Admin - Orders</title>
+    <title>Libidex Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        body { font-family: 'Inter', sans-serif; background: #f0f2f5; color: #333; }
         
-        .header { background: #333; color: #fff; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-size: 24px; }
-        .header a { color: #fff; text-decoration: none; }
-        
-        .login-box { max-width: 400px; margin: 100px auto; background: #fff; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .login-box h2 { text-align: center; margin-bottom: 30px; color: #333; }
+        .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .login-box { background: #fff; padding: 50px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 420px; }
+        .login-box h1 { text-align: center; margin-bottom: 10px; color: #333; font-size: 28px; }
+        .login-box p { text-align: center; color: #666; margin-bottom: 30px; }
         .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 5px; color: #555; }
-        .form-group input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
-        .btn { background: #28a745; color: #fff; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        .btn:hover { background: #218838; }
-        .btn-danger { background: #dc3545; }
-        .btn-danger:hover { background: #c82333; }
-        .btn-primary { background: #007bff; }
-        .btn-primary:hover { background: #0056b3; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #555; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 14px; border: 2px solid #e1e1e1; border-radius: 10px; font-size: 14px; transition: all 0.3s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #667eea; outline: none; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 14px 30px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 500; transition: transform 0.2s; }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-sm { padding: 8px 16px; font-size: 13px; }
+        .btn-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .btn-danger { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
+        .btn-warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         
-        .message { padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .admin-layout { display: flex; min-height: 100vh; }
+        .sidebar { width: 260px; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); color: #fff; padding: 20px 0; position: fixed; height: 100vh; overflow-y: auto; }
+        .sidebar-header { padding: 20px 25px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .sidebar-header h2 { font-size: 22px; display: flex; align-items: center; gap: 10px; }
+        .sidebar-header h2 i { color: #667eea; }
+        .nav-item { padding: 14px 25px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 12px; border-left: 3px solid transparent; }
+        .nav-item:hover, .nav-item.active { background: rgba(102, 126, 234, 0.2); border-left-color: #667eea; }
+        .nav-item i { width: 24px; }
+        .nav-item a { color: #fff; text-decoration: none; display: flex; align-items: center; gap: 12px; width: 100%; }
+        
+        .main-content { flex: 1; margin-left: 260px; padding: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: #fff; padding: 20px 30px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .header h1 { font-size: 24px; color: #333; }
+        .header .user-info { display: flex; align-items: center; gap: 15px; }
+        .header .user-info span { color: #666; }
+        .logout-btn { background: #eb3349; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 14px; transition: all 0.3s; }
+        .logout-btn:hover { background: #f45c43; }
+        
+        .message { padding: 15px 20px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
         .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         
-        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
-        .stat-card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
-        .stat-card h3 { font-size: 36px; color: #333; }
-        .stat-card p { color: #666; margin-top: 5px; }
-        .stat-card.pending h3 { color: #ffc107; }
-        .stat-card.confirmed h3 { color: #28a745; }
-        .stat-card.shipped h3 { color: #007bff; }
-        .stat-card.delivered h3 { color: #17a2b8; }
+        .card { background: #fff; border-radius: 15px; padding: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0; }
+        .card-header h2 { font-size: 20px; color: #333; display: flex; align-items: center; gap: 10px; }
+        .card-header h2 i { color: #667eea; }
         
-        table { width: 100%; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        th { background: #333; color: #fff; padding: 15px; text-align: left; }
-        td { padding: 15px; border-bottom: 1px solid #eee; }
-        tr:last-child td { border-bottom: none; }
-        tr:hover { background: #f9f9f9; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .stat-card .icon { width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 15px; }
+        .stat-card .icon.blue { background: rgba(102, 126, 234, 0.1); color: #667eea; }
+        .stat-card .icon.green { background: rgba(17, 153, 142, 0.1); color: #11998e; }
+        .stat-card .icon.orange { background: rgba(255, 165, 2, 0.1); color: #ffa502; }
+        .stat-card .icon.red { background: rgba(235, 51, 73, 0.1); color: #eb3349; }
+        .stat-card h3 { font-size: 32px; color: #333; margin-bottom: 5px; }
+        .stat-card p { color: #888; font-size: 14px; }
         
-        .status-badge { padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-        .status-pending { background: #ffc107; color: #000; }
-        .status-confirmed { background: #28a745; color: #fff; }
-        .status-shipped { background: #007bff; color: #fff; }
-        .status-delivered { background: #17a2b8; color: #fff; }
-        .status-cancelled { background: #dc3545; color: #fff; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8f9fa; padding: 15px; text-align: left; font-weight: 600; color: #555; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 15px; border-bottom: 1px solid #f0f0f0; }
+        tr:hover { background: #f8f9fa; }
         
-        select { padding: 8px; border: 1px solid #ddd; border-radius: 5px; }
+        .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-confirmed { background: #d4edda; color: #155724; }
+        .status-shipped { background: #cce5ff; color: #004085; }
+        .status-delivered { background: #d1e7dd; color: #0f5132; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .status-active { background: #d4edda; color: #155724; }
+        .status-inactive { background: #f8d7da; color: #721c24; }
+        
+        select, input[type="text"], input[type="number"], input[type="email"], textarea { padding: 10px 15px; border: 2px solid #e1e1e1; border-radius: 8px; font-size: 14px; }
+        select:focus, input:focus, textarea:focus { border-color: #667eea; outline: none; }
+        
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .form-grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .form-full { grid-column: span 2; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #555; font-size: 14px; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: #fff; padding: 30px; border-radius: 15px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0; }
+        .modal-header h3 { font-size: 20px; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #888; }
+        .modal-close:hover { color: #333; }
+        
+        .action-btns { display: flex; gap: 8px; }
+        .action-btns button, .action-btns a { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; text-decoration: none; transition: all 0.2s; }
+        .edit-btn { background: #667eea; color: #fff; }
+        .delete-btn { background: #eb3349; color: #fff; }
+        
+        .empty-state { text-align: center; padding: 50px; color: #888; }
+        .empty-state i { font-size: 48px; margin-bottom: 15px; color: #ddd; }
+        
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .form-grid { grid-template-columns: 1fr; }
+            .form-full { grid-column: span 1; }
+            .sidebar { width: 70px; }
+            .sidebar-header h2 span, .nav-item span { display: none; }
+            .main-content { margin-left: 70px; }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>📦 Libidex Admin</h1>
-        <?php if ($is_logged_in): ?>
-            <a href="?logout=1">Logout</a>
-        <?php endif; ?>
+<?php if (!$is_logged_in): ?>
+    <div class="login-container">
+        <div class="login-box">
+            <h1><i class="fas fa-lock"></i></h1>
+            <p>Libidex Admin Panel</p>
+            <?php if ($message): ?>
+                <div class="message <?php echo $message_type; ?>"><?php echo $message; ?></div>
+            <?php endif; ?>
+            <form method="POST">
+                <input type="hidden" name="action" value="login">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" required placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" required placeholder="Enter password">
+                </div>
+                <button type="submit" class="btn" style="width:100%">Login</button>
+            </form>
+            <p style="margin-top:20px; font-size:12px; color:#999;">Default: admin / admin123</p>
+        </div>
+    </div>
+<?php else: ?>
+    <div class="admin-layout">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-gem"></i> <span>Libidex</span></h2>
+            </div>
+            <div class="nav-item <?php echo $page == 'dashboard' ? 'active' : ''; ?>">
+                <a href="?page=dashboard"><i class="fas fa-chart-line"></i> <span>Dashboard</span></a>
+            </div>
+            <div class="nav-item <?php echo $page == 'products' ? 'active' : ''; ?>">
+                <a href="?page=products"><i class="fas fa-box"></i> <span>Products</span></a>
+            </div>
+            <div class="nav-item <?php echo $page == 'reviews' ? 'active' : ''; ?>">
+                <a href="?page=reviews"><i class="fas fa-star"></i> <span>Reviews</span></a>
+            </div>
+            <div class="nav-item <?php echo $page == 'orders' ? 'active' : ''; ?>">
+                <a href="?page=orders"><i class="fas fa-shopping-cart"></i> <span>Orders</span></a>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <h1><?php 
+                    $titles = ['dashboard' => 'Dashboard', 'products' => 'Products Management', 'reviews' => 'Reviews Management', 'orders' => 'Orders Management'];
+                    echo $titles[$page] ?? 'Dashboard';
+                ?></h1>
+                <div class="user-info">
+                    <span>Welcome, Admin</span>
+                    <a href="?logout=1" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+            
+            <?php if ($message): ?>
+                <div class="message <?php echo $message_type; ?>">
+                    <i class="fas fa-<?php echo $message_type == 'success' ? 'check-circle' : 'exclamation-circle'; ?>"></i>
+                    <?php echo $message; ?>
+                </div>
+            <?php endif; ?>
+            
+            <?php
+            $pdo = getDB();
+            
+            if ($page === 'dashboard'):
+                $totalOrders = $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn();
+                $pendingOrders = $pdo->query("SELECT COUNT(*) FROM orders WHERE status='pending'")->fetchColumn();
+                $totalReviews = $pdo->query("SELECT COUNT(*) FROM reviews")->fetchColumn();
+                $totalProducts = $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
+                $recentOrders = $pdo->query("SELECT * FROM orders ORDER BY id DESC LIMIT 5")->fetchAll();
+            ?>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="icon blue"><i class="fas fa-shopping-cart"></i></div>
+                        <h3><?php echo $totalOrders; ?></h3>
+                        <p>Total Orders</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon orange"><i class="fas fa-clock"></i></div>
+                        <h3><?php echo $pendingOrders; ?></h3>
+                        <p>Pending Orders</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon green"><i class="fas fa-star"></i></div>
+                        <h3><?php echo $totalReviews; ?></h3>
+                        <p>Reviews</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon red"><i class="fas fa-box"></i></div>
+                        <h3><?php echo $totalProducts; ?></h3>
+                        <p>Products</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-clock"></i> Recent Orders</h2>
+                    </div>
+                    <?php if (empty($recentOrders)): ?>
+                        <div class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>No orders yet</p>
+                        </div>
+                    <?php else: ?>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Product</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($recentOrders as $order): ?>
+                                    <tr>
+                                        <td>#<?php echo $order['id']; ?></td>
+                                        <td><?php echo htmlspecialchars($order['name']); ?></td>
+                                        <td><?php echo htmlspecialchars($order['phone']); ?></td>
+                                        <td><?php echo htmlspecialchars($order['product']); ?></td>
+                                        <td><span class="status-badge status-<?php echo $order['status']; ?>"><?php echo ucfirst($order['status']); ?></span></td>
+                                        <td><?php echo date('d M Y', strtotime($order['created_at'])); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <div style="margin-top:15px; text-align:center;">
+                            <a href="?page=orders" class="btn btn-sm btn-primary">View All Orders</a>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            
+            <?php elseif ($page === 'products'):
+                $product = $pdo->query("SELECT * FROM products WHERE id=1")->fetch();
+            ?>
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-box"></i> Edit Product</h2>
+                    </div>
+                    <form method="POST">
+                        <input type="hidden" name="action" value="update_product">
+                        <input type="hidden" name="id" value="1">
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Product Name (English)</label>
+                                <input type="text" name="name" value="<?php echo htmlspecialchars($product['name']); ?>" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Product Name (Hindi)</label>
+                                <input type="text" name="name_hindi" value="<?php echo htmlspecialchars($product['name_hindi']); ?>">
+                            </div>
+                            <div class="form-group form-full">
+                                <label>Description (English)</label>
+                                <textarea name="description" rows="3"><?php echo htmlspecialchars($product['description']); ?></textarea>
+                            </div>
+                            <div class="form-group form-full">
+                                <label>Description (Hindi)</label>
+                                <textarea name="description_hindi" rows="3"><?php echo htmlspecialchars($product['description_hindi']); ?></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Current Price (₹)</label>
+                                <input type="number" name="price" value="<?php echo $product['price']; ?>" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Old Price (₹)</label>
+                                <input type="number" name="old_price" value="<?php echo $product['old_price']; ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Product Image</label>
+                                <select name="image">
+                                    <option value="product-1.png" <?php echo $product['image'] == 'product-1.png' ? 'selected' : ''; ?>>product-1.png</option>
+                                    <option value="product-2.png" <?php echo $product['image'] == 'product-2.png' ? 'selected' : ''; ?>>product-2.png</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select name="status">
+                                    <option value="active" <?php echo $product['status'] == 'active' ? 'selected' : ''; ?>>Active</option>
+                                    <option value="inactive" <?php echo $product['status'] == 'inactive' ? 'selected' : ''; ?>>Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 20px;">
+                            <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-image"></i> Available Images</h2>
+                    </div>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <div style="text-align: center;">
+                            <img src="../images/product-1.png" style="width: 150px; border-radius: 10px; border: 2px solid #ddd;">
+                            <p style="margin-top: 10px; font-size: 12px; color: #666;">product-1.png</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <img src="../images/product-2.png" style="width: 150px; border-radius: 10px; border: 2px solid #ddd;">
+                            <p style="margin-top: 10px; font-size: 12px; color: #666;">product-2.png</p>
+                        </div>
+                    </div>
+                </div>
+            
+            <?php elseif ($page === 'reviews'):
+                $reviews = $pdo->query("SELECT * FROM reviews ORDER BY sort_order ASC, id DESC")->fetchAll();
+            ?>
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-star"></i> Reviews Management</h2>
+                        <button class="btn btn-sm btn-primary" onclick="openModal('addReviewModal')"><i class="fas fa-plus"></i> Add Review</button>
+                    </div>
+                    
+                    <?php if (empty($reviews)): ?>
+                        <div class="empty-state">
+                            <i class="fas fa-star-half-alt"></i>
+                            <p>No reviews yet</p>
+                        </div>
+                    <?php else: ?>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Age</th>
+                                    <th>Review</th>
+                                    <th>Image</th>
+                                    <th>Order</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($reviews as $review): ?>
+                                    <tr>
+                                        <td>#<?php echo $review['id']; ?></td>
+                                        <td><?php echo htmlspecialchars($review['name']); ?></td>
+                                        <td><?php echo $review['age']; ?></td>
+                                        <td><?php echo htmlspecialchars(substr($review['review_text'], 0, 50)); ?>...</td>
+                                        <td><img src="../images/<?php echo $review['image']; ?>" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"></td>
+                                        <td><?php echo $review['sort_order']; ?></td>
+                                        <td><span class="status-badge status-<?php echo $review['status']; ?>"><?php echo ucfirst($review['status']); ?></span></td>
+                                        <td>
+                                            <div class="action-btns">
+                                                <button class="edit-btn" onclick="editReview(<?php echo htmlspecialchars(json_encode($review)); ?>)"><i class="fas fa-edit"></i></button>
+                                                <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this review?')">
+                                                    <input type="hidden" name="action" value="delete_review">
+                                                    <input type="hidden" name="id" value="<?php echo $review['id']; ?>">
+                                                    <button type="submit" class="delete-btn"><i class="fas fa-trash"></i></button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
+                </div>
+                
+                <div id="addReviewModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-plus"></i> Add Review</h3>
+                            <button class="modal-close" onclick="closeModal('addReviewModal')">&times;</button>
+                        </div>
+                        <form method="POST">
+                            <input type="hidden" name="action" value="add_review">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Name</label>
+                                    <input type="text" name="name" required placeholder="Customer name">
+                                </div>
+                                <div class="form-group">
+                                    <label>Age</label>
+                                    <input type="number" name="age" placeholder="Customer age">
+                                </div>
+                                <div class="form-group">
+                                    <label>Image</label>
+                                    <select name="image">
+                                        <option value="live-1.jpg">live-1.jpg</option>
+                                        <option value="live-2.jpg">live-2.jpg</option>
+                                        <option value="live-3.jpg">live-3.jpg</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Sort Order</label>
+                                    <input type="number" name="sort_order" value="0">
+                                </div>
+                                <div class="form-group form-full">
+                                    <label>Review Text</label>
+                                    <textarea name="review_text" rows="3" required placeholder="Review text"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select name="status">
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="margin-top: 20px; text-align: right;">
+                                <button type="button" class="btn btn-sm" style="background:#ccc; margin-right:10px;" onclick="closeModal('addReviewModal')">Cancel</button>
+                                <button type="submit" class="btn btn-success btn-sm">Save Review</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div id="editReviewModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-edit"></i> Edit Review</h3>
+                            <button class="modal-close" onclick="closeModal('editReviewModal')">&times;</button>
+                        </div>
+                        <form method="POST">
+                            <input type="hidden" name="action" value="update_review">
+                            <input type="hidden" name="id" id="edit_id">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Name</label>
+                                    <input type="text" name="name" id="edit_name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Age</label>
+                                    <input type="number" name="age" id="edit_age">
+                                </div>
+                                <div class="form-group">
+                                    <label>Image</label>
+                                    <select name="image" id="edit_image">
+                                        <option value="live-1.jpg">live-1.jpg</option>
+                                        <option value="live-2.jpg">live-2.jpg</option>
+                                        <option value="live-3.jpg">live-3.jpg</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Sort Order</label>
+                                    <input type="number" name="sort_order" id="edit_sort_order">
+                                </div>
+                                <div class="form-group form-full">
+                                    <label>Review Text</label>
+                                    <textarea name="review_text" id="edit_review_text" rows="3" required></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select name="status" id="edit_status">
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="margin-top: 20px; text-align: right;">
+                                <button type="button" class="btn btn-sm" style="background:#ccc; margin-right:10px;" onclick="closeModal('editReviewModal')">Cancel</button>
+                                <button type="submit" class="btn btn-success btn-sm">Update Review</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            
+            <?php elseif ($page === 'orders'):
+                $orders = $pdo->query("SELECT * FROM orders ORDER BY id DESC")->fetchAll();
+            ?>
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-shopping-cart"></i> Orders Management</h2>
+                        <span style="color:#888;">Total: <?php echo count($orders); ?> orders</span>
+                    </div>
+                    
+                    <?php if (empty($orders)): ?>
+                        <div class="empty-state">
+                            <i class="fas fa-shopping-bag"></i>
+                            <p>No orders yet</p>
+                        </div>
+                    <?php else: ?>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Product</th>
+                                    <th>Source</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($orders as $order): ?>
+                                    <tr>
+                                        <td>#<?php echo $order['id']; ?></td>
+                                        <td><?php echo htmlspecialchars($order['name']); ?></td>
+                                        <td><?php echo htmlspecialchars($order['phone']); ?></td>
+                                        <td><?php echo htmlspecialchars($order['product']); ?></td>
+                                        <td><small><?php echo htmlspecialchars($order['utm_source'] ?: 'Direct'); ?></small></td>
+                                        <td>
+                                            <form method="POST" style="display:inline;">
+                                                <input type="hidden" name="action" value="update_order_status">
+                                                <input type="hidden" name="id" value="<?php echo $order['id']; ?>">
+                                                <select name="status" onchange="this.form.submit()" style="padding:5px 10px; border-radius:5px;">
+                                                    <option value="pending" <?php echo $order['status'] == 'pending' ? 'selected' : ''; ?>>Pending</option>
+                                                    <option value="confirmed" <?php echo $order['status'] == 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
+                                                    <option value="shipped" <?php echo $order['status'] == 'shipped' ? 'selected' : ''; ?>>Shipped</option>
+                                                    <option value="delivered" <?php echo $order['status'] == 'delivered' ? 'selected' : ''; ?>>Delivered</option>
+                                                    <option value="cancelled" <?php echo $order['status'] == 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
+                                                </select>
+                                            </form>
+                                        </td>
+                                        <td><?php echo date('d M Y, H:i', strtotime($order['created_at'])); ?></td>
+                                        <td>
+                                            <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this order?')">
+                                                <input type="hidden" name="action" value="delete_order">
+                                                <input type="hidden" name="id" value="<?php echo $order['id']; ?>">
+                                                <button type="submit" class="delete-btn"><i class="fas fa-trash"></i></button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
     
-    <div class="container">
-        <?php if ($message): ?>
-            <div class="message <?php echo $message_type; ?>"><?php echo $message; ?></div>
-        <?php endif; ?>
-        
-        <?php if (!$is_logged_in): ?>
-            <div class="login-box">
-                <h2>🔐 Admin Login</h2>
-                <form method="POST">
-                    <input type="hidden" name="action" value="login">
-                    <div class="form-group">
-                        <label>Username</label>
-                        <input type="text" name="username" required placeholder="Enter username">
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" name="password" required placeholder="Enter password">
-                    </div>
-                    <button type="submit" class="btn" style="width:100%">Login</button>
-                </form>
-                <p style="text-align:center; margin-top:20px; color:#666;">Default: admin / admin123</p>
-            </div>
-        <?php else: ?>
-            <?php
-            $total = count($orders);
-            $pending = count(array_filter($orders, fn($o) => $o['status'] === 'pending'));
-            $confirmed = count(array_filter($orders, fn($o) => $o['status'] === 'confirmed'));
-            $shipped = count(array_filter($orders, fn($o) => $o['status'] === 'shipped'));
-            $delivered = count(array_filter($orders, fn($o) => $o['status'] === 'delivered'));
-            ?>
-            
-            <div class="stats">
-                <div class="stat-card">
-                    <h3><?php echo $total; ?></h3>
-                    <p>Total Orders</p>
-                </div>
-                <div class="stat-card pending">
-                    <h3><?php echo $pending; ?></h3>
-                    <p>Pending</p>
-                </div>
-                <div class="stat-card confirmed">
-                    <h3><?php echo $confirmed; ?></h3>
-                    <p>Confirmed</p>
-                </div>
-                <div class="stat-card delivered">
-                    <h3><?php echo $delivered; ?></h3>
-                    <p>Delivered</p>
-                </div>
-            </div>
-            
-            <?php if (empty($orders)): ?>
-                <div class="message">No orders yet!</div>
-            <?php else: ?>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Phone</th>
-                            <th>Product</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($orders as $order): ?>
-                            <tr>
-                                <td>#<?php echo $order['id']; ?></td>
-                                <td><?php echo htmlspecialchars($order['name']); ?></td>
-                                <td><?php echo htmlspecialchars($order['phone']); ?></td>
-                                <td><?php echo htmlspecialchars($order['product']); ?></td>
-                                <td>
-                                    <form method="POST" style="display:inline;">
-                                        <input type="hidden" name="action" value="update_status">
-                                        <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
-                                        <select name="new_status" onchange="this.form.submit()">
-                                            <option value="pending" <?php echo $order['status'] === 'pending' ? 'selected' : ''; ?>>Pending</option>
-                                            <option value="confirmed" <?php echo $order['status'] === 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
-                                            <option value="shipped" <?php echo $order['status'] === 'shipped' ? 'selected' : ''; ?>>Shipped</option>
-                                            <option value="delivered" <?php echo $order['status'] === 'delivered' ? 'selected' : ''; ?>>Delivered</option>
-                                            <option value="cancelled" <?php echo $order['status'] === 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
-                                        </select>
-                                    </form>
-                                </td>
-                                <td><?php echo $order['created_at']; ?></td>
-                                <td>
-                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this order?')">
-                                        <input type="hidden" name="action" value="delete_order">
-                                        <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
-                                        <button type="submit" class="btn btn-danger" style="padding:5px 10px; font-size:12px;">Delete</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
-        <?php endif; ?>
-    </div>
+    <script>
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+        function editReview(data) {
+            document.getElementById('edit_id').value = data.id;
+            document.getElementById('edit_name').value = data.name;
+            document.getElementById('edit_age').value = data.age || '';
+            document.getElementById('edit_image').value = data.image;
+            document.getElementById('edit_review_text').value = data.review_text;
+            document.getElementById('edit_sort_order').value = data.sort_order;
+            document.getElementById('edit_status').value = data.status;
+            openModal('editReviewModal');
+        }
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+            }
+        }
+    </script>
+<?php endif; ?>
 </body>
 </html>
