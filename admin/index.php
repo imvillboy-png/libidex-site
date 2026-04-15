@@ -59,6 +59,20 @@ function initDB() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
     
+    $pdo->exec("CREATE TABLE IF NOT EXISTS admin_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        email TEXT,
+        role TEXT DEFAULT 'admin',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    
+    $check = $pdo->query("SELECT COUNT(*) FROM admin_users")->fetchColumn();
+    if ($check == 0) {
+        $pdo->exec("INSERT INTO admin_users (username, password, role) VALUES ('admin', '" . password_hash('admin123', PASSWORD_DEFAULT) . "', 'admin')");
+    }
+    
     $check = $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
     if ($check == 0) {
         $pdo->exec("INSERT INTO products (name, name_hindi, description, description_hindi, price, old_price, image, status) 
@@ -90,12 +104,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'login':
                 $username = $_POST['username'] ?? '';
                 $password = $_POST['password'] ?? '';
-                if ($username === 'admin' && $password === 'admin123') {
+                
+                $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ?");
+                $stmt->execute([$username]);
+                $user = $stmt->fetch();
+                
+                if ($user && password_verify($password, $user['password'])) {
+                    $_SESSION['admin_id'] = $user['id'];
+                    $_SESSION['admin_username'] = $user['username'];
+                    $_SESSION['admin_role'] = $user['role'];
                     $_SESSION['admin_logged_in'] = true;
                     header('Location: index.php');
                     exit;
                 } else {
-                    $message = 'Invalid credentials!';
+                    $message = 'Invalid username or password!';
                     $message_type = 'error';
                 }
                 break;
@@ -104,6 +126,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 session_destroy();
                 header('Location: index.php');
                 exit;
+                
+            case 'change_password':
+                $current_pass = $_POST['current_password'] ?? '';
+                $new_pass = $_POST['new_password'] ?? '';
+                $confirm_pass = $_POST['confirm_password'] ?? '';
+                
+                $stmt = $pdo->prepare("SELECT password FROM admin_users WHERE id = ?");
+                $stmt->execute([$_SESSION['admin_id']]);
+                $user = $stmt->fetch();
+                
+                if (!password_verify($current_pass, $user['password'])) {
+                    $message = 'Current password is incorrect!';
+                    $message_type = 'error';
+                } elseif ($new_pass !== $confirm_pass) {
+                    $message = 'New passwords do not match!';
+                    $message_type = 'error';
+                } elseif (strlen($new_pass) < 6) {
+                    $message = 'Password must be at least 6 characters!';
+                    $message_type = 'error';
+                } else {
+                    $hashed = password_hash($new_pass, PASSWORD_DEFAULT);
+                    $stmt = $pdo->prepare("UPDATE admin_users SET password = ? WHERE id = ?");
+                    $stmt->execute([$hashed, $_SESSION['admin_id']]);
+                    $message = 'Password changed successfully!';
+                    $message_type = 'success';
+                }
+                break;
+                
+            case 'add_user':
+                $new_username = $_POST['new_username'] ?? '';
+                $new_password = $_POST['new_password'] ?? '';
+                $new_email = $_POST['new_email'] ?? '';
+                $new_role = $_POST['new_role'] ?? 'admin';
+                
+                $stmt = $pdo->prepare("SELECT id FROM admin_users WHERE username = ?");
+                $stmt->execute([$new_username]);
+                if ($stmt->fetch()) {
+                    $message = 'Username already exists!';
+                    $message_type = 'error';
+                } else {
+                    $hashed = password_hash($new_password, PASSWORD_DEFAULT);
+                    $stmt = $pdo->prepare("INSERT INTO admin_users (username, password, email, role) VALUES (?, ?, ?, ?)");
+                    $stmt->execute([$new_username, $hashed, $new_email, $new_role]);
+                    $message = 'User added successfully!';
+                    $message_type = 'success';
+                }
+                break;
+                
+            case 'delete_user':
+                $user_id = intval($_POST['user_id'] ?? 0);
+                if ($user_id == $_SESSION['admin_id']) {
+                    $message = 'You cannot delete yourself!';
+                    $message_type = 'error';
+                } else {
+                    $stmt = $pdo->prepare("DELETE FROM admin_users WHERE id = ?");
+                    $stmt->execute([$user_id]);
+                    $message = 'User deleted successfully!';
+                    $message_type = 'success';
+                }
+                break;
                 
             case 'update_product':
                 $stmt = $pdo->prepare("UPDATE products SET name=?, name_hindi=?, description=?, description_hindi=?, price=?, old_price=?, image=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?");
@@ -176,6 +258,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $is_logged_in = $_SESSION['admin_logged_in'] ?? false;
+$admin_username = $_SESSION['admin_username'] ?? 'Admin';
+$admin_role = $_SESSION['admin_role'] ?? 'admin';
 $page = $_GET['page'] ?? 'dashboard';
 ?>
 <!DOCTYPE html>
@@ -220,7 +304,7 @@ $page = $_GET['page'] ?? 'dashboard';
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: #fff; padding: 20px 30px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .header h1 { font-size: 24px; color: #333; }
         .header .user-info { display: flex; align-items: center; gap: 15px; }
-        .header .user-info span { color: #666; }
+        .header .user-info .avatar { width: 40px; height: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; }
         .logout-btn { background: #eb3349; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 14px; transition: all 0.3s; }
         .logout-btn:hover { background: #f45c43; }
         
@@ -256,8 +340,10 @@ $page = $_GET['page'] ?? 'dashboard';
         .status-cancelled { background: #f8d7da; color: #721c24; }
         .status-active { background: #d4edda; color: #155724; }
         .status-inactive { background: #f8d7da; color: #721c24; }
+        .status-admin { background: #667eea; color: #fff; }
+        .status-editor { background: #17a2b8; color: #fff; }
         
-        select, input[type="text"], input[type="number"], input[type="email"], textarea { padding: 10px 15px; border: 2px solid #e1e1e1; border-radius: 8px; font-size: 14px; }
+        select, input[type="text"], input[type="number"], input[type="email"], input[type="password"], textarea { padding: 10px 15px; border: 2px solid #e1e1e1; border-radius: 8px; font-size: 14px; }
         select:focus, input:focus, textarea:focus { border-color: #667eea; outline: none; }
         
         .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
@@ -281,6 +367,8 @@ $page = $_GET['page'] ?? 'dashboard';
         
         .empty-state { text-align: center; padding: 50px; color: #888; }
         .empty-state i { font-size: 48px; margin-bottom: 15px; color: #ddd; }
+        
+        .user-row .avatar { width: 35px; height: 35px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: 14px; }
         
         @media (max-width: 768px) {
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -334,16 +422,24 @@ $page = $_GET['page'] ?? 'dashboard';
             <div class="nav-item <?php echo $page == 'orders' ? 'active' : ''; ?>">
                 <a href="?page=orders"><i class="fas fa-shopping-cart"></i> <span>Orders</span></a>
             </div>
+            <div class="nav-item <?php echo $page == 'users' ? 'active' : ''; ?>">
+                <a href="?page=users"><i class="fas fa-users"></i> <span>Users</span></a>
+            </div>
+            <div class="nav-item <?php echo $page == 'settings' ? 'active' : ''; ?>">
+                <a href="?page=settings"><i class="fas fa-cog"></i> <span>Settings</span></a>
+            </div>
         </div>
         
         <div class="main-content">
             <div class="header">
                 <h1><?php 
-                    $titles = ['dashboard' => 'Dashboard', 'products' => 'Products Management', 'reviews' => 'Reviews Management', 'orders' => 'Orders Management'];
+                    $titles = ['dashboard' => 'Dashboard', 'products' => 'Products Management', 'reviews' => 'Reviews Management', 'orders' => 'Orders Management', 'users' => 'User Management', 'settings' => 'Settings'];
                     echo $titles[$page] ?? 'Dashboard';
                 ?></h1>
                 <div class="user-info">
-                    <span>Welcome, Admin</span>
+                    <div class="avatar"><?php echo strtoupper(substr($admin_username, 0, 1)); ?></div>
+                    <span><?php echo htmlspecialchars($admin_username); ?></span>
+                    <span style="color:#888; font-size:12px;">(<?php echo ucfirst($admin_role); ?>)</span>
                     <a href="?logout=1" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
                 </div>
             </div>
@@ -484,22 +580,6 @@ $page = $_GET['page'] ?? 'dashboard';
                             <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Save Changes</button>
                         </div>
                     </form>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <h2><i class="fas fa-image"></i> Available Images</h2>
-                    </div>
-                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                        <div style="text-align: center;">
-                            <img src="../images/product-1.png" style="width: 150px; border-radius: 10px; border: 2px solid #ddd;">
-                            <p style="margin-top: 10px; font-size: 12px; color: #666;">product-1.png</p>
-                        </div>
-                        <div style="text-align: center;">
-                            <img src="../images/product-2.png" style="width: 150px; border-radius: 10px; border: 2px solid #ddd;">
-                            <p style="margin-top: 10px; font-size: 12px; color: #666;">product-2.png</p>
-                        </div>
-                    </div>
                 </div>
             
             <?php elseif ($page === 'reviews'):
@@ -718,6 +798,138 @@ $page = $_GET['page'] ?? 'dashboard';
                             </tbody>
                         </table>
                     <?php endif; ?>
+                </div>
+            
+            <?php elseif ($page === 'users'):
+                $users = $pdo->query("SELECT id, username, email, role, created_at FROM admin_users ORDER BY id ASC")->fetchAll();
+            ?>
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-users"></i> User Management</h2>
+                        <button class="btn btn-sm btn-success" onclick="openModal('addUserModal')"><i class="fas fa-user-plus"></i> Add User</button>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($users as $user): ?>
+                                <tr class="user-row">
+                                    <td>
+                                        <div style="display:flex; align-items:center; gap:10px;">
+                                            <div class="avatar"><?php echo strtoupper(substr($user['username'], 0, 1)); ?></div>
+                                            <strong><?php echo htmlspecialchars($user['username']); ?></strong>
+                                            <?php if ($user['id'] == $_SESSION['admin_id']): ?>
+                                                <span style="background:#667eea; color:#fff; padding:2px 8px; border-radius:10px; font-size:10px;">You</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($user['email'] ?: '-'); ?></td>
+                                    <td><span class="status-badge status-<?php echo $user['role']; ?>"><?php echo ucfirst($user['role']); ?></span></td>
+                                    <td><?php echo date('d M Y', strtotime($user['created_at'])); ?></td>
+                                    <td>
+                                        <?php if ($user['id'] != $_SESSION['admin_id']): ?>
+                                            <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this user?')">
+                                                <input type="hidden" name="action" value="delete_user">
+                                                <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
+                                                <button type="submit" class="delete-btn"><i class="fas fa-trash"></i></button>
+                                            </form>
+                                        <?php else: ?>
+                                            <span style="color:#ccc; font-size:12px;">Current User</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="addUserModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-user-plus"></i> Add New User</h3>
+                            <button class="modal-close" onclick="closeModal('addUserModal')">&times;</button>
+                        </div>
+                        <form method="POST">
+                            <input type="hidden" name="action" value="add_user">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Username *</label>
+                                    <input type="text" name="new_username" required placeholder="Enter username">
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" name="new_email" placeholder="Enter email">
+                                </div>
+                                <div class="form-group">
+                                    <label>Password *</label>
+                                    <input type="password" name="new_password" required placeholder="Enter password (min 6 chars)">
+                                </div>
+                                <div class="form-group">
+                                    <label>Role</label>
+                                    <select name="new_role">
+                                        <option value="admin">Admin</option>
+                                        <option value="editor">Editor</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="margin-top: 20px; text-align: right;">
+                                <button type="button" class="btn btn-sm" style="background:#ccc; margin-right:10px;" onclick="closeModal('addUserModal')">Cancel</button>
+                                <button type="submit" class="btn btn-success btn-sm">Add User</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            
+            <?php elseif ($page === 'settings'):
+            ?>
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-key"></i> Change Password</h2>
+                    </div>
+                    <form method="POST">
+                        <input type="hidden" name="action" value="change_password">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Current Password *</label>
+                                <input type="password" name="current_password" required placeholder="Enter current password">
+                            </div>
+                            <div class="form-group">
+                                <label>New Password *</label>
+                                <input type="password" name="new_password" required placeholder="Enter new password (min 6 chars)">
+                            </div>
+                            <div class="form-group">
+                                <label>Confirm New Password *</label>
+                                <input type="password" name="confirm_password" required placeholder="Confirm new password">
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <button type="submit" class="btn btn-warning"><i class="fas fa-key"></i> Change Password</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-info-circle"></i> Account Info</h2>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                        <div>
+                            <p style="color:#888; font-size:12px; margin-bottom:5px;">Username</p>
+                            <p style="font-weight:600; font-size:16px;"><?php echo htmlspecialchars($admin_username); ?></p>
+                        </div>
+                        <div>
+                            <p style="color:#888; font-size:12px; margin-bottom:5px;">Role</p>
+                            <p style="font-weight:600; font-size:16px;"><?php echo ucfirst($admin_role); ?></p>
+                        </div>
+                    </div>
                 </div>
             <?php endif; ?>
         </div>
