@@ -1,0 +1,42 @@
+database:
+  type: mysql
+  version: "8.0"
+  name: libidex_db
+  plan: free
+
+services:
+  - type: web
+    name: libidex-site
+    runtime: php
+    buildCommand: |
+      composer install --no-dev --optimize-autoloader
+      chmod -R 755 .
+    startCommand: |
+      cp .env.example .env 2>/dev/null || true
+      apache2-foreground
+    plan: free
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase:
+          name: libidex_db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: libidex_db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: libidex_db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: libidex_db
+          property: username
+      - key: DB_PASS
+        fromDatabase:
+          name: libidex_db
+          property: password
+      - key: ADMIN_EMAIL
+        value: admin@libidex.com
