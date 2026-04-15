@@ -1,9 +1,4 @@
 <?php
-function getenv($key) {
-    $value = isset($_ENV[$key]) ? $_ENV[$key] : (isset($_SERVER[$key]) ? $_SERVER[$key] : false);
-    return $value;
-}
-
 $db_type = getenv('DB_TYPE') ?: 'pgsql';
 $db_file = __DIR__ . '/../data.db';
 
