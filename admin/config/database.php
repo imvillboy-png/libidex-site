@@ -4,7 +4,7 @@ function getenv($key) {
     return $value;
 }
 
-$db_type = getenv('DB_TYPE') ?: 'sqlite';
+$db_type = getenv('DB_TYPE') ?: 'pgsql';
 $db_file = __DIR__ . '/../data.db';
 
 class Database {
@@ -12,15 +12,16 @@ class Database {
     private $pdo;
 
     private function __construct() {
-        $db_type = getenv('DB_TYPE') ?: 'sqlite';
+        global $db_type, $db_file;
+        $db_type = getenv('DB_TYPE') ?: 'pgsql';
         $db_file = __DIR__ . '/../data.db';
         
         if ($db_type === 'pgsql') {
-            $host = getenv('DB_HOST') ?: 'localhost';
+            $host = getenv('DB_HOST') ?: 'dpg-d7ftuuernols73e56vc0-a.oregon-postgres.render.com';
             $port = getenv('DB_PORT') ?: '5432';
             $dbname = getenv('DB_NAME') ?: 'libidex_db';
             $username = getenv('DB_USER') ?: 'libidex_db_user';
-            $password = getenv('DB_PASS') ?: '';
+            $password = getenv('DB_PASS') ?: '905313';
             
             try {
                 $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
@@ -53,7 +54,7 @@ function getDB() {
 
 function initDB() {
     $pdo = getDB();
-    $db_type = getenv('DB_TYPE') ?: 'sqlite';
+    $db_type = getenv('DB_TYPE') ?: 'pgsql';
     
     if ($db_type === 'pgsql') {
         $pdo->exec("CREATE TABLE IF NOT EXISTS products (
@@ -106,6 +107,27 @@ function initDB() {
             role TEXT DEFAULT 'admin',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )");
+        
+        $count = $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
+        if ($count == 0) {
+            $pdo->exec("INSERT INTO products (name, name_hindi, price, old_price, status) 
+            VALUES ('Libidex', 'अपनी क्षमता को उजागर करें', 2490, 4980, 'active')");
+            $pdo->exec("INSERT INTO products (name, name_hindi, price, old_price, status) 
+            VALUES ('ProMan', 'पुरुषों के लिए शक्ति बढ़ाने वाला', 1990, 3990, 'active')");
+        }
+        
+        $count = $pdo->query("SELECT COUNT(*) FROM reviews")->fetchColumn();
+        if ($count == 0) {
+            $pdo->exec("INSERT INTO reviews (name, age, review_text, status, sort_order) VALUES
+            ('राजेश शर्मा', 42, 'बहुत बढ़िया उत्पाद!', 'active', 1),
+            ('अमित वर्मा', 38, 'आत्मविश्वास वापस आ गया।', 'active', 2)");
+        }
+        
+        $count = $pdo->query("SELECT COUNT(*) FROM admin_users")->fetchColumn();
+        if ($count == 0) {
+            $pdo->exec("INSERT INTO admin_users (username, password, role) 
+            VALUES ('admin', '" . password_hash('admin123', PASSWORD_DEFAULT) . "', 'admin')");
+        }
     } else {
         $pdo->exec("CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -157,6 +179,27 @@ function initDB() {
             role TEXT DEFAULT 'admin',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
+        
+        $count = $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
+        if ($count == 0) {
+            $pdo->exec("INSERT INTO products (name, name_hindi, price, old_price, status) 
+            VALUES ('Libidex', 'अपनी क्षमता को उजागर करें', 2490, 4980, 'active')");
+            $pdo->exec("INSERT INTO products (name, name_hindi, price, old_price, status) 
+            VALUES ('ProMan', 'पुरुषों के लिए शक्ति बढ़ाने वाला', 1990, 3990, 'active')");
+        }
+        
+        $count = $pdo->query("SELECT COUNT(*) FROM reviews")->fetchColumn();
+        if ($count == 0) {
+            $pdo->exec("INSERT INTO reviews (name, age, review_text, status, sort_order) VALUES
+            ('राजेश शर्मा', 42, 'बहुत बढ़िया उत्पाद!', 'active', 1),
+            ('अमित वर्मा', 38, 'आत्मविश्वास वापस आ गया।', 'active', 2)");
+        }
+        
+        $count = $pdo->query("SELECT COUNT(*) FROM admin_users")->fetchColumn();
+        if ($count == 0) {
+            $pdo->exec("INSERT INTO admin_users (username, password, role) 
+            VALUES ('admin', '" . password_hash('admin123', PASSWORD_DEFAULT) . "', 'admin')");
+        }
     }
 }
 
