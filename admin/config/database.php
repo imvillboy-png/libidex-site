@@ -1,15 +1,25 @@
 <?php
 $db_type = getenv('DB_TYPE') ?: 'pgsql';
-$db_file = __DIR__ . '/../data.db';
+$data_dir = __DIR__ . '/../data';
+$db_file = $data_dir . '/data.db';
+
+if (!is_dir($data_dir)) {
+    mkdir($data_dir, 0755, true);
+}
 
 class Database {
     private static $instance = null;
     private $pdo;
 
     private function __construct() {
-        global $db_type, $db_file;
+        global $db_type, $db_file, $data_dir;
+        
+        if (!is_dir($data_dir)) {
+            mkdir($data_dir, 0755, true);
+        }
+        
         $db_type = getenv('DB_TYPE') ?: 'pgsql';
-        $db_file = __DIR__ . '/../data.db';
+        $db_file = $data_dir . '/data.db';
         
         if ($db_type === 'pgsql') {
             $host = getenv('DB_HOST') ?: 'dpg-d7ftuuernols73e56vc0-a.oregon-postgres.render.com';
@@ -22,6 +32,7 @@ class Database {
                 $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
                 $this->pdo = new PDO($dsn, $username, $password);
             } catch (PDOException $e) {
+                error_log("PostgreSQL connection failed: " . $e->getMessage());
                 $this->pdo = new PDO("sqlite:$db_file");
             }
         } else {
