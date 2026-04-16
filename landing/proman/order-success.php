@@ -1,4 +1,9 @@
 <?php
+function getenv($key) {
+    $value = isset($_ENV[$key]) ? $_ENV[$key] : (isset($_SERVER[$key]) ? $_SERVER[$key] : false);
+    return $value;
+}
+
 $name = isset($_POST['name']) ? trim($_POST['name']) : '';
 $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
 $country = isset($_POST['country']) ? trim($_POST['country']) : 'IN';
@@ -31,12 +36,14 @@ if (empty($name) || empty($phone)) {
             $port = getenv('DB_PORT') ?: '5432';
             $dbname = getenv('DB_NAME') ?: 'libidex_db_npch';
             $username = getenv('DB_USER') ?: 'libidex_db_user';
-            $password = getenv('DB_PASS') ?: '';
+            $password = getenv('DB_PASS') ?: 'Libidex2024!';
             
             try {
-                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
-                $pdo = new PDO($dsn, $username, $password);
-                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
+                $pdo = new PDO($dsn, $username, $password, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_TIMEOUT => 30
+                ]);
                 
                 $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
                     id SERIAL PRIMARY KEY,

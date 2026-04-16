@@ -29,9 +29,10 @@ class Database {
             $password = getenv('DB_PASS') ?: 'Libidex2024!';
             
             try {
-                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
                 $this->pdo = new PDO($dsn, $username, $password, array(
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_TIMEOUT => 30
                 ));
             } catch (PDOException $e) {
                 error_log("PostgreSQL connection failed: " . $e->getMessage());

@@ -34,9 +34,11 @@ if (empty($name) || empty($phone)) {
             $password = getenv('DB_PASS') ?: 'Libidex2024!';
             
             try {
-                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
-                $pdo = new PDO($dsn, $username, $password);
-                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
+                $pdo = new PDO($dsn, $username, $password, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_TIMEOUT => 30
+                ]);
                 
                 $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
                     id SERIAL PRIMARY KEY,

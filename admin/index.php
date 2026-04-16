@@ -654,7 +654,10 @@ $page = $_GET['page'] ?? 'dashboard';
                 <div class="card">
                     <div class="card-header">
                         <h2><i class="fas fa-shopping-cart"></i> Orders Management</h2>
-                        <span style="color:#888;">Total: <?php echo count($orders); ?> orders</span>
+                        <div>
+                            <span style="color:#888; margin-right:15px;">Total: <?php echo count($orders); ?> orders</span>
+                            <a href="export.php?type=orders" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Download Excel</a>
+                        </div>
                     </div>
                     
                     <?php if (empty($orders)): ?>
