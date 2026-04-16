@@ -1,5 +1,5 @@
 <?php
-$db_type = getenv('DB_TYPE') ?: 'sqlite';
+$db_type = getenv('DB_TYPE') ?: 'pgsql';
 $data_dir = '/tmp/libidex';
 $db_file = $data_dir . '/data.db';
 
@@ -18,7 +18,7 @@ class Database {
             @mkdir($data_dir, 0755, true);
         }
         
-        $db_type = getenv('DB_TYPE') ?: 'sqlite';
+        $db_type = getenv('DB_TYPE') ?: 'pgsql';
         $db_file = $data_dir . '/data.db';
         
         if ($db_type === 'pgsql') {
@@ -63,7 +63,7 @@ function getDB() {
 
 function initDB() {
     $pdo = getDB();
-    $db_type = getenv('DB_TYPE') ?: 'sqlite';
+    $db_type = getenv('DB_TYPE') ?: 'pgsql';
     
     if ($db_type === 'pgsql') {
         $pdo->exec("CREATE TABLE IF NOT EXISTS products (
