@@ -2,6 +2,7 @@
 session_start();
 
 require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/config/admin_config.php';
 
 initDB();
 
@@ -30,33 +31,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $username = $_POST['username'] ?? '';
                 $password = $_POST['password'] ?? '';
                 
-                $ADMIN_USERNAME = 'admin';
-                $ADMIN_PASSWORD_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
-                
-                $loggedIn = false;
-                
-                if ($username === $ADMIN_USERNAME && password_verify($password, $ADMIN_PASSWORD_HASH)) {
+                if ($username === 'admin' && password_verify($password, getAdminPasswordHash())) {
                     $_SESSION['admin_id'] = 1;
                     $_SESSION['admin_username'] = 'admin';
                     $_SESSION['admin_role'] = 'admin';
                     $_SESSION['admin_logged_in'] = true;
-                    $_SESSION['is_hardcoded_admin'] = true;
-                    header('Location: index.php');
+                    header('Location: dashboard.php');
                     exit;
                 } else {
-                    $user = $db->getAdminUser($username);
-                    if ($user && password_verify($password, $user['password'])) {
-                        $_SESSION['admin_id'] = $user['id'];
-                        $_SESSION['admin_username'] = $user['username'];
-                        $_SESSION['admin_role'] = $user['role'];
-                        $_SESSION['admin_logged_in'] = true;
-                        $_SESSION['is_hardcoded_admin'] = false;
-                        header('Location: index.php');
-                        exit;
-                    } else {
-                        $message = 'Invalid username or password!';
-                        $message_type = 'error';
-                    }
+                    $message = 'Invalid username or password!';
+                    $message_type = 'error';
                 }
                 break;
                 
@@ -70,17 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $new_pass = $_POST['new_password'] ?? '';
                 $confirm_pass = $_POST['confirm_password'] ?? '';
                 
-                $ADMIN_PASSWORD_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
-                
-                $valid = false;
-                if (isset($_SESSION['is_hardcoded_admin']) && $_SESSION['is_hardcoded_admin']) {
-                    $valid = password_verify($current_pass, $ADMIN_PASSWORD_HASH);
-                } else {
-                    $user = $db->getAdminUser($_SESSION['admin_username']);
-                    $valid = $user && password_verify($current_pass, $user['password']);
-                }
-                
-                if (!$valid) {
+                if (!password_verify($current_pass, getAdminPasswordHash())) {
                     $message = 'Current password is incorrect!';
                     $message_type = 'error';
                 } elseif ($new_pass !== $confirm_pass) {
@@ -90,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message = 'Password must be at least 6 characters!';
                     $message_type = 'error';
                 } else {
+                    setAdminPasswordHash(password_hash($new_pass, PASSWORD_DEFAULT));
                     $message = 'Password changed successfully!';
                     $message_type = 'success';
                 }

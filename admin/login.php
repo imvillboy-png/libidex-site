@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once 'config/database.php';
+require_once 'config/admin_config.php';
 require_once 'includes/auth.php';
 require_once 'includes/helpers.php';
 
@@ -11,9 +12,6 @@ if (isLoggedIn()) {
 
 $error = '';
 
-$ADMIN_USERNAME = 'admin';
-$ADMIN_PASSWORD_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = sanitize($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -21,20 +19,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($username) || empty($password)) {
         $error = 'Please enter both username and password.';
     } else {
-        if ($username === $ADMIN_USERNAME && password_verify($password, $ADMIN_PASSWORD_HASH)) {
+        if ($username === 'admin' && password_verify($password, getAdminPasswordHash())) {
             login(1, 'admin');
             header('Location: dashboard.php');
             exit;
         } else {
-            $db = getDB();
-            $user = $db->getAdminUser($username);
-            if ($user && password_verify($password, $user['password'])) {
-                login($user['id'], $user['username']);
-                header('Location: dashboard.php');
-                exit;
-            } else {
-                $error = 'Invalid username or password.';
-            }
+            $error = 'Invalid username or password.';
         }
     }
 }
