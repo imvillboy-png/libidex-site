@@ -16,7 +16,7 @@ function saveAdminConfig($config) {
 }
 
 function getDefaultAdminHash() {
-    return '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+    return '$2y$10$oI600QAnqtj4eS/sewcUmuaHllCkqL.qWu2m86YJgASYC1ClQyAoG';
 }
 
 function getAdminPasswordHash() {
