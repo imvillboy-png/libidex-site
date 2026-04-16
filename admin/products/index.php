@@ -5,8 +5,8 @@ require_once '../includes/helpers.php';
 
 requireLogin();
 
-$pdo = getDB();
-$products = $pdo->query("SELECT * FROM products ORDER BY id DESC")->fetchAll();
+$db = getDB();
+$products = $db->getProducts();
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -5,8 +5,8 @@ require_once '../includes/helpers.php';
 
 requireLogin();
 
-$pdo = getDB();
-$users = $pdo->query("SELECT * FROM admin_users ORDER BY id DESC")->fetchAll();
+$db = getDB();
+$users = $db->getAdminUsers();
 ?>
 <!DOCTYPE html>
 <html lang="en">

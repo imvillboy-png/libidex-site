@@ -5,8 +5,8 @@ require_once '../includes/helpers.php';
 
 requireLogin();
 
-$pdo = getDB();
-$reviews = $pdo->query("SELECT * FROM reviews ORDER BY sort_order ASC, id DESC")->fetchAll();
+$db = getDB();
+$reviews = $db->getReviews();
 ?>
 <!DOCTYPE html>
 <html lang="en">

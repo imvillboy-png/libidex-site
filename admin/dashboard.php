@@ -5,14 +5,20 @@ require_once 'includes/helpers.php';
 
 requireLogin();
 
-$pdo = getDB();
+$db = getDB();
+$db->refreshOrders();
 
-$totalOrders = $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn();
-$pendingOrders = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn();
-$completedOrders = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'delivered'")->fetchColumn();
-$todayOrders = $pdo->query("SELECT COUNT(*) FROM orders WHERE DATE(created_at) = CURDATE()")->fetchColumn();
+$allOrders = $db->getOrders();
+$totalOrders = count($allOrders);
+$pendingOrders = count(array_filter($allOrders, function($o) { return $o['status'] === 'pending'; }));
+$completedOrders = count(array_filter($allOrders, function($o) { return $o['status'] === 'delivered'; }));
 
-$recentOrders = $pdo->query("SELECT * FROM orders ORDER BY created_at DESC LIMIT 5")->fetchAll();
+$today = date('Y-m-d');
+$todayOrders = count(array_filter($allOrders, function($o) use ($today) { 
+    return isset($o['created_at']) && strpos($o['created_at'], $today) === 0; 
+}));
+
+$recentOrders = array_slice($allOrders, 0, 5);
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -1,9 +1,4 @@
 <?php
-function getenv($key) {
-    $value = isset($_ENV[$key]) ? $_ENV[$key] : (isset($_SERVER[$key]) ? $_SERVER[$key] : false);
-    return $value;
-}
-
 $name = isset($_POST['name']) ? trim($_POST['name']) : '';
 $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
 $country = isset($_POST['country']) ? trim($_POST['country']) : 'IN';
@@ -22,148 +17,39 @@ if (empty($name) || empty($phone)) {
 } elseif (strlen($phone) < 10) {
     $error = 'कृपया एक वैध फ़ोन नंबर दर्ज करें।';
 } else {
-    try {
-        $db_type = getenv('DB_TYPE') ?: 'pgsql';
-        $data_dir = '/tmp/libidex';
-        $db_file = $data_dir . '/data.db';
-        
-        if (!is_dir($data_dir)) {
-            @mkdir($data_dir, 0755, true);
-        }
-        
-        if ($db_type === 'pgsql') {
-            $host = getenv('DB_HOST') ?: 'dpg-d7g70hl8nd3s73a7jcag-a.oregon-postgres.render.com';
-            $port = getenv('DB_PORT') ?: '5432';
-            $dbname = getenv('DB_NAME') ?: 'libidex_db_npch';
-            $username = getenv('DB_USER') ?: 'libidex_db_user';
-            $password = getenv('DB_PASS') ?: 'Libidex2024!';
-            
-            try {
-                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
-                $pdo = new PDO($dsn, $username, $password, [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_TIMEOUT => 30
-                ]);
-                
-                $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
-                    id SERIAL PRIMARY KEY,
-                    name TEXT,
-                    phone TEXT,
-                    country TEXT DEFAULT 'IN',
-                    clickid TEXT,
-                    utm_campaign TEXT,
-                    utm_content TEXT,
-                    utm_medium TEXT,
-                    utm_source TEXT,
-                    product TEXT DEFAULT 'Proman',
-                    status TEXT DEFAULT 'pending',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )");
-                
-                $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_campaign, utm_content, utm_medium, utm_source, product, status) 
-                                       VALUES (:name, :phone, :country, :clickid, :utm_campaign, :utm_content, :utm_medium, :utm_source, :product, 'pending')");
-                
-                $stmt->execute([
-                    ':name' => $name,
-                    ':phone' => $phone,
-                    ':country' => $country,
-                    ':clickid' => $clickid,
-                    ':utm_campaign' => $utm_campaign,
-                    ':utm_content' => $utm_content,
-                    ':utm_medium' => $utm_medium,
-                    ':utm_source' => $utm_source,
-                    ':product' => $product
-                ]);
-                
-                $success = true;
-                
-            } catch (PDOException $e) {
-                error_log("PostgreSQL Error: " . $e->getMessage());
-                try {
-                    if (!is_dir($data_dir)) { @mkdir($data_dir, 0755, true); }
-                    $pdo = new PDO("sqlite:$db_file");
-                    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                    
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT,
-                        phone TEXT,
-                        country TEXT DEFAULT 'IN',
-                        clickid TEXT,
-                        utm_campaign TEXT,
-                        utm_content TEXT,
-                        utm_medium TEXT,
-                        utm_source TEXT,
-                        product TEXT DEFAULT 'Proman',
-                        status TEXT DEFAULT 'pending',
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    )");
-                    
-                    $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_campaign, utm_content, utm_medium, utm_source, product, status) 
-                                           VALUES (:name, :phone, :country, :clickid, :utm_campaign, :utm_content, :utm_medium, :utm_source, :product, 'pending')");
-                    
-                    $stmt->execute([
-                        ':name' => $name,
-                        ':phone' => $phone,
-                        ':country' => $country,
-                        ':clickid' => $clickid,
-                        ':utm_campaign' => $utm_campaign,
-                        ':utm_content' => $utm_content,
-                        ':utm_medium' => $utm_medium,
-                        ':utm_source' => $utm_source,
-                        ':product' => $product
-                    ]);
-                    
-                    $success = true;
-                } catch (Exception $e2) {
-                    error_log("SQLite Error: " . $e2->getMessage());
-                    $success = true;
-                }
-            }
+    $apiUrl = 'https://libidex-site.onrender.com/api/orders.php';
+    
+    $orderData = json_encode([
+        'name' => $name,
+        'phone' => $phone,
+        'country' => $country,
+        'product' => $product,
+        'clickid' => $clickid,
+        'utm_campaign' => $utm_campaign,
+        'utm_source' => $utm_source
+    ]);
+    
+    $ch = curl_init($apiUrl);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $orderData);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+    
+    if ($httpCode === 200 || $httpCode === 201) {
+        $result = json_decode($response, true);
+        if ($result && isset($result['success'])) {
+            $success = true;
         } else {
-            try {
-                if (!is_dir($data_dir)) { @mkdir($data_dir, 0755, true); }
-                $pdo = new PDO("sqlite:$db_file");
-                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                
-                $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT,
-                    phone TEXT,
-                    country TEXT DEFAULT 'IN',
-                    clickid TEXT,
-                    utm_campaign TEXT,
-                    utm_content TEXT,
-                    utm_medium TEXT,
-                    utm_source TEXT,
-                    product TEXT DEFAULT 'Proman',
-                    status TEXT DEFAULT 'pending',
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )");
-                
-                $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_campaign, utm_content, utm_medium, utm_source, product, status) 
-                                       VALUES (:name, :phone, :country, :clickid, :utm_campaign, :utm_content, :utm_medium, :utm_source, :product, 'pending')");
-                
-                $stmt->execute([
-                    ':name' => $name,
-                    ':phone' => $phone,
-                    ':country' => $country,
-                    ':clickid' => $clickid,
-                    ':utm_campaign' => $utm_campaign,
-                    ':utm_content' => $utm_content,
-                    ':utm_medium' => $utm_medium,
-                    ':utm_source' => $utm_source,
-                    ':product' => $product
-                ]);
-                
-                $success = true;
-            } catch (Exception $e) {
-                error_log("SQLite Error: " . $e->getMessage());
-                $success = true;
-            }
+            $success = true;
         }
-    } catch (Exception $e) {
-        error_log("Order Error: " . $e->getMessage());
+    } else {
         $success = true;
     }
 }

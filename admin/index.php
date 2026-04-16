@@ -10,16 +10,14 @@ $message_type = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
-        $pdo = getDB();
+        $db = getDB();
         
         switch ($_POST['action']) {
             case 'login':
                 $username = $_POST['username'] ?? '';
                 $password = $_POST['password'] ?? '';
                 
-                $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ?");
-                $stmt->execute([$username]);
-                $user = $stmt->fetch();
+                $user = $db->getAdminUser($username);
                 
                 if ($user && password_verify($password, $user['password'])) {
                     $_SESSION['admin_id'] = $user['id'];
@@ -44,9 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $new_pass = $_POST['new_password'] ?? '';
                 $confirm_pass = $_POST['confirm_password'] ?? '';
                 
-                $stmt = $pdo->prepare("SELECT password FROM admin_users WHERE id = ?");
-                $stmt->execute([$_SESSION['admin_id']]);
-                $user = $stmt->fetch();
+                $user = $db->getAdminUser($_SESSION['admin_username']);
                 
                 if (!password_verify($current_pass, $user['password'])) {
                     $message = 'Current password is incorrect!';
@@ -58,9 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message = 'Password must be at least 6 characters!';
                     $message_type = 'error';
                 } else {
-                    $hashed = password_hash($new_pass, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("UPDATE admin_users SET password = ? WHERE id = ?");
-                    $stmt->execute([$hashed, $_SESSION['admin_id']]);
+                    $db->updatePassword($_SESSION['admin_id'], $new_pass);
                     $message = 'Password changed successfully!';
                     $message_type = 'success';
                 }
@@ -72,15 +66,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $new_email = $_POST['new_email'] ?? '';
                 $new_role = $_POST['new_role'] ?? 'admin';
                 
-                $stmt = $pdo->prepare("SELECT id FROM admin_users WHERE username = ?");
-                $stmt->execute([$new_username]);
-                if ($stmt->fetch()) {
+                $existingUser = $db->getAdminUser($new_username);
+                if ($existingUser) {
                     $message = 'Username already exists!';
                     $message_type = 'error';
                 } else {
-                    $hashed = password_hash($new_password, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("INSERT INTO admin_users (username, password, email, role) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([$new_username, $hashed, $new_email, $new_role]);
+                    $db->addAdminUser([
+                        'username' => $new_username,
+                        'password' => $new_password,
+                        'email' => $new_email,
+                        'role' => $new_role
+                    ]);
                     $message = 'User added successfully!';
                     $message_type = 'success';
                 }
@@ -92,76 +88,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message = 'You cannot delete yourself!';
                     $message_type = 'error';
                 } else {
-                    $stmt = $pdo->prepare("DELETE FROM admin_users WHERE id = ?");
-                    $stmt->execute([$user_id]);
+                    $db->deleteAdminUser($user_id);
                     $message = 'User deleted successfully!';
                     $message_type = 'success';
                 }
                 break;
                 
             case 'update_product':
-                $stmt = $pdo->prepare("UPDATE products SET name=?, name_hindi=?, description=?, description_hindi=?, price=?, old_price=?, image=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?");
-                $stmt->execute([
-                    $_POST['name'],
-                    $_POST['name_hindi'],
-                    $_POST['description'],
-                    $_POST['description_hindi'],
-                    floatval($_POST['price']),
-                    floatval($_POST['old_price']),
-                    $_POST['image'],
-                    $_POST['status'],
-                    intval($_POST['id'])
-                ]);
+                $db->updateProduct($_POST);
                 $message = 'Product updated successfully!';
                 $message_type = 'success';
                 break;
                 
             case 'add_review':
-                $stmt = $pdo->prepare("INSERT INTO reviews (name, age, image, review_text, status, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->execute([
-                    $_POST['name'],
-                    intval($_POST['age']),
-                    $_POST['image'],
-                    $_POST['review_text'],
-                    $_POST['status'],
-                    intval($_POST['sort_order'])
-                ]);
+                $db->addReview($_POST);
                 $message = 'Review added successfully!';
                 $message_type = 'success';
                 break;
                 
             case 'update_review':
-                $stmt = $pdo->prepare("UPDATE reviews SET name=?, age=?, image=?, review_text=?, status=?, sort_order=? WHERE id=?");
-                $stmt->execute([
-                    $_POST['name'],
-                    intval($_POST['age']),
-                    $_POST['image'],
-                    $_POST['review_text'],
-                    $_POST['status'],
-                    intval($_POST['sort_order']),
-                    intval($_POST['id'])
-                ]);
+                $db->updateReview($_POST);
                 $message = 'Review updated successfully!';
                 $message_type = 'success';
                 break;
                 
             case 'delete_review':
-                $stmt = $pdo->prepare("DELETE FROM reviews WHERE id=?");
-                $stmt->execute([intval($_POST['id'])]);
+                $db->deleteReview($_POST['id']);
                 $message = 'Review deleted successfully!';
                 $message_type = 'success';
                 break;
                 
             case 'update_order_status':
-                $stmt = $pdo->prepare("UPDATE orders SET status=? WHERE id=?");
-                $stmt->execute([$_POST['status'], intval($_POST['id'])]);
+                $db->updateOrderStatus($_POST['id'], $_POST['status']);
                 $message = 'Order status updated!';
                 $message_type = 'success';
                 break;
                 
             case 'delete_order':
-                $stmt = $pdo->prepare("DELETE FROM orders WHERE id=?");
-                $stmt->execute([intval($_POST['id'])]);
+                $db->deleteOrder($_POST['id']);
                 $message = 'Order deleted successfully!';
                 $message_type = 'success';
                 break;
@@ -364,14 +328,15 @@ $page = $_GET['page'] ?? 'dashboard';
             <?php endif; ?>
             
             <?php
-            $pdo = getDB();
+            $db = getDB();
             
             if ($page === 'dashboard'):
-                $totalOrders = $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn();
-                $pendingOrders = $pdo->query("SELECT COUNT(*) FROM orders WHERE status='pending'")->fetchColumn();
-                $totalReviews = $pdo->query("SELECT COUNT(*) FROM reviews")->fetchColumn();
-                $totalProducts = $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
-                $recentOrders = $pdo->query("SELECT * FROM orders ORDER BY id DESC LIMIT 5")->fetchAll();
+                $allOrders = $db->getOrders();
+                $totalOrders = count($allOrders);
+                $pendingOrders = count(array_filter($allOrders, function($o) { return $o['status'] === 'pending'; }));
+                $totalReviews = count($db->getReviews());
+                $totalProducts = count($db->getProducts());
+                $recentOrders = array_slice($allOrders, 0, 5);
             ?>
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -437,7 +402,7 @@ $page = $_GET['page'] ?? 'dashboard';
                 </div>
             
             <?php elseif ($page === 'products'):
-                $product = $pdo->query("SELECT * FROM products WHERE id=1")->fetch();
+                $product = $db->getProduct(1);
             ?>
                 <div class="card">
                     <div class="card-header">
@@ -495,7 +460,7 @@ $page = $_GET['page'] ?? 'dashboard';
                 </div>
             
             <?php elseif ($page === 'reviews'):
-                $reviews = $pdo->query("SELECT * FROM reviews ORDER BY sort_order ASC, id DESC")->fetchAll();
+                $reviews = $db->getReviews();
             ?>
                 <div class="card">
                     <div class="card-header">
@@ -649,7 +614,8 @@ $page = $_GET['page'] ?? 'dashboard';
                 </div>
             
             <?php elseif ($page === 'orders'):
-                $orders = $pdo->query("SELECT * FROM orders ORDER BY id DESC")->fetchAll();
+                $db->refreshOrders();
+                $orders = $db->getOrders();
             ?>
                 <div class="card">
                     <div class="card-header">
@@ -716,7 +682,7 @@ $page = $_GET['page'] ?? 'dashboard';
                 </div>
             
             <?php elseif ($page === 'users'):
-                $users = $pdo->query("SELECT id, username, email, role, created_at FROM admin_users ORDER BY id ASC")->fetchAll();
+                $users = $db->getAdminUsers();
             ?>
                 <div class="card">
                     <div class="card-header">
