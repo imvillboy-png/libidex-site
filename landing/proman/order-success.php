@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/../../../admin/config/database.php';
+initDB();
+
 $name = isset($_POST['name']) ? trim($_POST['name']) : '';
 $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
 $country = isset($_POST['country']) ? trim($_POST['country']) : 'IN';
@@ -18,32 +21,7 @@ if (empty($name) || empty($phone)) {
     $error = 'कृपया एक वैध फ़ोन नंबर दर्ज करें।';
 } else {
     try {
-        $db_type = getenv('DB_TYPE') ?: 'sqlite';
-        $data_dir = '/tmp/libidex';
-        $db_file = $data_dir . '/data.db';
-        
-        if (!is_dir($data_dir)) {
-            @mkdir($data_dir, 0755, true);
-        }
-        
-        if ($db_type === 'pgsql') {
-            $host = getenv('DB_HOST') ?: 'dpg-d7ftuuernols73e56vc0-a.oregon-postgres.render.com';
-            $port = getenv('DB_PORT') ?: '5432';
-            $dbname = getenv('DB_NAME') ?: 'libidex_db';
-            $username = getenv('DB_USER') ?: 'libidex_db_user';
-            $password = getenv('DB_PASS') ?: '';
-            
-            try {
-                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
-                $pdo = new PDO($dsn, $username, $password);
-            } catch (PDOException $e) {
-                $pdo = new PDO("sqlite:$db_file");
-            }
-        } else {
-            $pdo = new PDO("sqlite:$db_file");
-        }
-        
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo = getDB();
         
         $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_campaign, utm_content, utm_medium, utm_source, product, status) 
                                VALUES (:name, :phone, :country, :clickid, :utm_campaign, :utm_content, :utm_medium, :utm_source, :product, 'pending')");
