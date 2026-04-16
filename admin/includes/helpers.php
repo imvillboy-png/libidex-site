@@ -1,9 +1,11 @@
 <?php
-function sanitize($input) {
-    if (is_array($input)) {
-        return array_map('sanitize', $input);
+if (!function_exists('sanitize')) {
+    function sanitize($input) {
+        if (is_array($input)) {
+            return array_map('sanitize', $input);
+        }
+        return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
     }
-    return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
 }
 
 function generateToken() {
