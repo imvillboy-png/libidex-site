@@ -1,7 +1,4 @@
 <?php
-require_once __DIR__ . '/admin/config/database.php';
-initDB();
-
 $name = isset($_POST['name']) ? trim($_POST['name']) : '';
 $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
 $country = isset($_POST['country']) ? trim($_POST['country']) : 'IN';
@@ -21,7 +18,7 @@ if (empty($name) || empty($phone)) {
     $error = 'कृपया एक वैध फ़ोन नंबर दर्ज करें।';
 } else {
     try {
-        $db_type = getenv('DB_TYPE') ?: 'sqlite';
+        $db_type = getenv('DB_TYPE') ?: 'pgsql';
         $data_dir = '/tmp/libidex';
         $db_file = $data_dir . '/data.db';
         
@@ -37,38 +34,129 @@ if (empty($name) || empty($phone)) {
             $password = getenv('DB_PASS') ?: 'Libidex2024!';
             
             try {
-                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=prefer";
-                $pdo = new PDO($dsn, $username, $password, array(
-                    PDO::ATTR_TIMEOUT => 10
-                ));
+                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+                $pdo = new PDO($dsn, $username, $password);
+                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                
+                $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT,
+                    phone TEXT,
+                    country TEXT DEFAULT 'IN',
+                    clickid TEXT,
+                    utm_campaign TEXT,
+                    utm_content TEXT,
+                    utm_medium TEXT,
+                    utm_source TEXT,
+                    product TEXT DEFAULT 'Libidex',
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )");
+                
+                $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_campaign, utm_content, utm_medium, utm_source, product, status) 
+                                       VALUES (:name, :phone, :country, :clickid, :utm_campaign, :utm_content, :utm_medium, :utm_source, :product, 'pending')");
+                
+                $stmt->execute([
+                    ':name' => $name,
+                    ':phone' => $phone,
+                    ':country' => $country,
+                    ':clickid' => $clickid,
+                    ':utm_campaign' => $utm_campaign,
+                    ':utm_content' => $utm_content,
+                    ':utm_medium' => $utm_medium,
+                    ':utm_source' => $utm_source,
+                    ':product' => $product
+                ]);
+                
+                $success = true;
+                
             } catch (PDOException $e) {
-                $pdo = new PDO("sqlite:$db_file");
+                error_log("PostgreSQL Error: " . $e->getMessage());
+                try {
+                    if (!is_dir($data_dir)) { @mkdir($data_dir, 0755, true); }
+                    $pdo = new PDO("sqlite:$db_file");
+                    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                    
+                    $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT,
+                        phone TEXT,
+                        country TEXT DEFAULT 'IN',
+                        clickid TEXT,
+                        utm_campaign TEXT,
+                        utm_content TEXT,
+                        utm_medium TEXT,
+                        utm_source TEXT,
+                        product TEXT DEFAULT 'Libidex',
+                        status TEXT DEFAULT 'pending',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )");
+                    
+                    $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_campaign, utm_content, utm_medium, utm_source, product, status) 
+                                           VALUES (:name, :phone, :country, :clickid, :utm_campaign, :utm_content, :utm_medium, :utm_source, :product, 'pending')");
+                    
+                    $stmt->execute([
+                        ':name' => $name,
+                        ':phone' => $phone,
+                        ':country' => $country,
+                        ':clickid' => $clickid,
+                        ':utm_campaign' => $utm_campaign,
+                        ':utm_content' => $utm_content,
+                        ':utm_medium' => $utm_medium,
+                        ':utm_source' => $utm_source,
+                        ':product' => $product
+                    ]);
+                    
+                    $success = true;
+                } catch (Exception $e2) {
+                    error_log("SQLite Error: " . $e2->getMessage());
+                    $success = true;
+                }
             }
         } else {
-            $pdo = new PDO("sqlite:$db_file");
+            try {
+                if (!is_dir($data_dir)) { @mkdir($data_dir, 0755, true); }
+                $pdo = new PDO("sqlite:$db_file");
+                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                
+                $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT,
+                    phone TEXT,
+                    country TEXT DEFAULT 'IN',
+                    clickid TEXT,
+                    utm_campaign TEXT,
+                    utm_content TEXT,
+                    utm_medium TEXT,
+                    utm_source TEXT,
+                    product TEXT DEFAULT 'Libidex',
+                    status TEXT DEFAULT 'pending',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )");
+                
+                $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_campaign, utm_content, utm_medium, utm_source, product, status) 
+                                       VALUES (:name, :phone, :country, :clickid, :utm_campaign, :utm_content, :utm_medium, :utm_source, :product, 'pending')");
+                
+                $stmt->execute([
+                    ':name' => $name,
+                    ':phone' => $phone,
+                    ':country' => $country,
+                    ':clickid' => $clickid,
+                    ':utm_campaign' => $utm_campaign,
+                    ':utm_content' => $utm_content,
+                    ':utm_medium' => $utm_medium,
+                    ':utm_source' => $utm_source,
+                    ':product' => $product
+                ]);
+                
+                $success = true;
+            } catch (Exception $e) {
+                error_log("SQLite Error: " . $e->getMessage());
+                $success = true;
+            }
         }
-        
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_campaign, utm_content, utm_medium, utm_source, product, status) 
-                               VALUES (:name, :phone, :country, :clickid, :utm_campaign, :utm_content, :utm_medium, :utm_source, :product, 'pending')");
-        
-        $stmt->execute([
-            ':name' => $name,
-            ':phone' => $phone,
-            ':country' => $country,
-            ':clickid' => $clickid,
-            ':utm_campaign' => $utm_campaign,
-            ':utm_content' => $utm_content,
-            ':utm_medium' => $utm_medium,
-            ':utm_source' => $utm_source,
-            ':product' => $product
-        ]);
-        
-        $success = true;
-        
-    } catch (PDOException $e) {
-        error_log("Database Error: " . $e->getMessage());
+    } catch (Exception $e) {
+        error_log("Order Error: " . $e->getMessage());
         $success = true;
     }
 }
