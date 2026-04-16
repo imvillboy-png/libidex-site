@@ -22,17 +22,16 @@ class Database {
         $db_file = $data_dir . '/data.db';
         
         if ($db_type === 'pgsql') {
-            $host = getenv('DB_HOST') ?: 'dpg-d7ftuuernols73e56vc0-a.oregon-postgres.render.com';
+            $host = getenv('DB_HOST') ?: 'dpg-d7g70hl8nd3s73a7jcag-a.oregon-postgres.render.com';
             $port = getenv('DB_PORT') ?: '5432';
-            $dbname = getenv('DB_NAME') ?: 'libidex_db';
+            $dbname = getenv('DB_NAME') ?: 'libidex_db_npch';
             $username = getenv('DB_USER') ?: 'libidex_db_user';
-            $password = getenv('DB_PASS') ?: '';
+            $password = getenv('DB_PASS') ?: 'Libidex2024!';
             
             try {
-                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=prefer";
+                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
                 $this->pdo = new PDO($dsn, $username, $password, array(
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_TIMEOUT => 10
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
                 ));
             } catch (PDOException $e) {
                 error_log("PostgreSQL connection failed: " . $e->getMessage());
