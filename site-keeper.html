@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔄 Site Keeper - Auto Ping</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            min-height: 100vh; 
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container { max-width: 600px; width: 100%; text-align: center; }
+        h1 { font-size: 32px; margin-bottom: 10px; }
+        .subtitle { color: #888; margin-bottom: 40px; font-size: 16px; }
+        .status-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .site { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .site:last-child { border-bottom: none; }
+        .site-name { font-size: 18px; font-weight: 600; }
+        .site-url { color: #888; font-size: 13px; margin-top: 5px; }
+        .ping-btn {
+            background: #28a745;
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .ping-btn:hover { background: #218838; transform: scale(1.05); }
+        .ping-btn:active { transform: scale(0.95); }
+        .indicator { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .online { background: #28a745; box-shadow: 0 0 10px rgba(40, 167, 69, 0.5); }
+        .offline { background: #dc3545; }
+        .checking { background: #ffc107; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .timer { font-size: 48px; font-weight: bold; color: #00c2ff; margin: 20px 0; text-shadow: 0 0 30px rgba(0, 194, 255, 0.5); }
+        .next-ping { color: #888; font-size: 14px; }
+        .info { background: rgba(0, 194, 255, 0.1); border: 1px solid rgba(0, 194, 255, 0.3); padding: 20px; border-radius: 12px; margin-top: 20px; text-align: left; }
+        .info h3 { color: #00c2ff; margin-bottom: 10px; }
+        .info p { color: #aaa; font-size: 14px; line-height: 1.6; margin-bottom: 8px; }
+        .alert { background: rgba(255, 193, 7, 0.2); border: 1px solid #ffc107; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Site Keeper</h1>
+        <p class="subtitle">Sites ko awake rakhein - ye page browser mein open rakhein</p>
+        
+        <div class="alert">
+            ⚠️ <strong>Important:</strong> Ye page tab close mat karna! Sites awake rahegi.
+        </div>
+        
+        <div class="status-card">
+            <div class="site">
+                <div>
+                    <div class="site-name"><span class="indicator" id="ind1"></span>Libidex Site</div>
+                    <div class="site-url">libidex-site.onrender.com</div>
+                </div>
+                <button class="ping-btn" onclick="pingSite('libidex')">📡 Ping</button>
+            </div>
+            <div class="site">
+                <div>
+                    <div class="site-name"><span class="indicator" id="ind2"></span>ProMan Site</div>
+                    <div class="site-url">pro-man-o8qm.onrender.com</div>
+                </div>
+                <button class="ping-btn" onclick="pingSite('proman')">📡 Ping</button>
+            </div>
+            <div class="site">
+                <div>
+                    <div class="site-name"><span class="indicator" id="ind3"></span>Admin API</div>
+                    <div class="site-url">libidex-site.onrender.com/api</div>
+                </div>
+                <button class="ping-btn" onclick="pingSite('api')">📡 Ping</button>
+            </div>
+        </div>
+        
+        <div class="timer" id="timer">0:00</div>
+        <p class="next-ping">Auto-ping har <span id="interval">2</span> minute mein</p>
+        
+        <div class="info">
+            <h3>📌 Kaise kaam karega:</h3>
+            <p>1. Ye page apne browser mein open rakhein</p>
+            <p>2. Jab tak ye page open hai, sites awake rahengi</p>
+            <p>3. Har 2 minute mein automatically ping hogi</p>
+            <p>4. Agar sites sleep ho gayi, toh ye page unhe wake kar degi</p>
+        </div>
+    </div>
+    
+    <script>
+        let seconds = 0;
+        let timerInterval;
+        const PING_INTERVAL = 120; // 2 minutes
+        
+        function updateTimer() {
+            seconds++;
+            let mins = Math.floor(seconds / 60);
+            let secs = seconds % 60;
+            document.getElementById('timer').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+            
+            if (seconds >= PING_INTERVAL) {
+                pingAll();
+                seconds = 0;
+            }
+        }
+        
+        function setIndicator(id, status) {
+            const el = document.getElementById(id);
+            el.className = 'indicator ' + status;
+        }
+        
+        function pingSite(site) {
+            let url;
+            switch(site) {
+                case 'libidex': url = 'https://libidex-site.onrender.com'; setIndicator('ind1', 'checking'); break;
+                case 'proman': url = 'https://pro-man-o8qm.onrender.com'; setIndicator('ind2', 'checking'); break;
+                case 'api': url = 'https://libidex-site.onrender.com/api/orders.php'; setIndicator('ind3', 'checking'); break;
+            }
+            
+            fetch(url, {mode: 'no-cors'})
+                .then(() => {
+                    setIndicator('ind' + (site === 'libidex' ? '1' : site === 'proman' ? '2' : '3'), 'online');
+                })
+                .catch(() => {
+                    setIndicator('ind' + (site === 'libidex' ? '1' : site === 'proman' ? '2' : '3'), 'offline');
+                });
+        }
+        
+        function pingAll() {
+            pingSite('libidex');
+            pingSite('proman');
+            pingSite('api');
+        }
+        
+        // Initial ping
+        pingAll();
+        
+        // Start timer
+        timerInterval = setInterval(updateTimer, 1000);
+        
+        // Warn before closing
+        window.onbeforeunload = function() {
+            return "Site keeper band mat karein - sites sleep ho jayengi!";
+        };
+    </script>
+</body>
+</html>
