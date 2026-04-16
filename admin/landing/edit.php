@@ -5,33 +5,34 @@ require_once '../includes/helpers.php';
 
 requireLogin();
 
-$pdo = getDB();
+$page = isset($_GET['page']) ? $_GET['page'] : 'proman';
+
+$message = '';
 $error = '';
 
-$id = intval($_GET['id'] ?? 0);
-if (!$id) { header('Location: index.php'); exit; }
-
-$stmt = $pdo->prepare("SELECT * FROM landing_pages WHERE id = ?");
-$stmt->execute([$id]);
-$page = $stmt->fetch();
-
-if (!$page) { header('Location: index.php'); exit; }
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = sanitize($_POST['name'] ?? '');
-    $landing_url = sanitize($_POST['landing_url'] ?? '');
-    $is_active = isset($_POST['is_active']) ? 1 : 0;
+    $content = $_POST['content'] ?? '';
     
-    if (empty($name) || empty($landing_url)) {
-        $error = 'Name and URL are required.';
+    $file = $page === 'proman' 
+        ? __DIR__ . '/../../landing/proman/index.html'
+        : __DIR__ . '/../../index.html';
+    
+    if (file_exists($file)) {
+        if (file_put_contents($file, $content) !== false) {
+            $message = 'Landing page updated successfully!';
+        } else {
+            $error = 'Failed to save file.';
+        }
     } else {
-        $stmt = $pdo->prepare("UPDATE landing_pages SET name = ?, landing_url = ?, is_active = ? WHERE id = ?");
-        $stmt->execute([$name, $landing_url, $is_active, $id]);
-        setFlash('success', 'Landing page updated!');
-        header('Location: index.php');
-        exit;
+        $error = 'File not found.';
     }
 }
+
+$file = $page === 'proman' 
+    ? __DIR__ . '/../../landing/proman/index.html'
+    : __DIR__ . '/../../index.html';
+
+$content = file_exists($file) ? file_get_contents($file) : 'File not found';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -39,66 +40,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Landing Page - Libidex Admin</title>
-    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f0f2f5; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fff; padding: 20px; border-radius: 12px; }
+        .header h1 { font-size: 24px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; }
+        .btn-success { background: #28a745; color: #fff; }
+        .btn-secondary { background: #6c757d; color: #fff; }
+        .card { background: #fff; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+        .tabs { display: flex; gap: 10px; padding: 20px; background: #fff; border-bottom: 1px solid #eee; }
+        .tab { padding: 10px 20px; border: none; background: #f8f9fa; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; color: #333; }
+        .tab.active { background: #667eea; color: #fff; }
+        .editor { width: 100%; min-height: 500px; padding: 20px; border: none; font-family: 'Monaco', 'Consolas', monospace; font-size: 13px; resize: vertical; background: #1e1e1e; color: #d4d4d4; }
+        .alert { padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100vh; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); color: #fff; padding: 20px; }
+        .sidebar-logo { padding: 20px 0; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .sidebar-logo h2 { font-size: 22px; }
+        .nav-item { padding: 14px 0; }
+        .nav-item a { color: rgba(255,255,255,0.7); text-decoration: none; display: flex; align-items: center; gap: 12px; }
+        .nav-item.active a { color: #667eea; font-weight: 600; }
+        .main { margin-left: 260px; }
+        .save-bar { padding: 20px; background: #fff; border-top: 1px solid #eee; position: sticky; bottom: 0; }
+    </style>
 </head>
 <body>
-    <div class="wrapper">
-        <aside class="sidebar">
-            <div class="sidebar-logo"><h2>Libidex Admin</h2></div>
-            <ul class="sidebar-nav">
-                <li class="nav-item"><a href="../dashboard.php" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>Dashboard</a></li>
-                <li class="nav-item"><a href="../products/" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Products</a></li>
-                <li class="nav-item"><a href="index.php" class="nav-link active"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>Landing Pages</a></li>
-                <li class="nav-item"><a href="../orders/" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>Orders</a></li>
-                <li class="nav-item"><a href="../users/" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>Users</a></li>
-                <li class="nav-item"><a href="../settings.php" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Settings</a></li>
-            </ul>
-        </aside>
-        
-        <main class="main-content">
+    <div class="sidebar">
+        <div class="sidebar-logo"><h2>Libidex Admin</h2></div>
+        <div class="nav-item"><a href="../dashboard.php">📊 Dashboard</a></div>
+        <div class="nav-item"><a href="../orders/">📦 Orders</a></div>
+        <div class="nav-item"><a href="../products/">🏷️ Products</a></div>
+        <div class="nav-item active"><a href="index.php">🌐 Landing Pages</a></div>
+        <div class="nav-item"><a href="../reviews/">⭐ Reviews</a></div>
+        <div class="nav-item"><a href="../settings.php">⚙️ Settings</a></div>
+        <div class="nav-item"><a href="../logout.php">🚪 Logout</a></div>
+    </div>
+    
+    <div class="main">
+        <div class="container">
             <div class="header">
                 <h1>Edit Landing Page</h1>
-                <div class="header-actions">
-                    <a href="../index.html" target="_blank" class="btn btn-view-site"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>View Website</a>
-                    <div class="user-info"><div class="user-avatar"><?php echo strtoupper(substr($_SESSION['admin_username'], 0, 1)); ?></div><span><?php echo htmlspecialchars($_SESSION['admin_username']); ?></span></div>
-                    <a href="../logout.php" class="btn btn-logout">Logout</a>
+                <div>
+                    <a href="index.php" class="btn btn-secondary">← Back</a>
                 </div>
             </div>
             
-            <a href="index.php" class="back-link"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>Back</a>
+            <?php if ($message): ?>
+                <div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div>
+            <?php endif; ?>
             
-            <?php if ($error): ?><div class="alert alert-error"><?php echo $error; ?></div><?php endif; ?>
+            <?php if ($error): ?>
+                <div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div>
+            <?php endif; ?>
             
             <div class="card">
-                <div class="card-header"><h2>Edit Landing Page</h2></div>
-                <div class="card-body">
-                    <form method="POST">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="name">Page Name *</label>
-                                <input type="text" id="name" name="name" class="form-control" value="<?php echo htmlspecialchars($page['name']); ?>" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="landing_url">Landing Page URL *</label>
-                                <input type="url" id="landing_url" name="landing_url" class="form-control" value="<?php echo htmlspecialchars($page['landing_url']); ?>" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="is_active">Status</label>
-                                <div class="checkbox-wrapper">
-                                    <input type="checkbox" id="is_active" name="is_active" value="1" <?php echo $page['is_active'] ? 'checked' : ''; ?>>
-                                    <label for="is_active" style="margin-bottom:0;margin-left:8px;">Active</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="btn-group">
-                            <button type="submit" class="btn btn-primary">Update</button>
-                            <a href="index.php" class="btn btn-back">Cancel</a>
-                        </div>
-                    </form>
+                <div class="tabs">
+                    <a href="edit.php?page=proman" class="tab <?php echo $page === 'proman' ? 'active' : ''; ?>">🛒 ProMan</a>
+                    <a href="edit.php?page=libidex" class="tab <?php echo $page === 'libidex' ? 'active' : ''; ?>">💊 Libidex</a>
                 </div>
+                <form method="POST">
+                    <textarea name="content" class="editor"><?php echo htmlspecialchars($content); ?></textarea>
+                    <div class="save-bar">
+                        <button type="submit" class="btn btn-success">💾 Save Changes</button>
+                    </div>
+                </form>
             </div>
-        </main>
+        </div>
     </div>
-    <style>.checkbox-wrapper{display:flex;align-items:center;padding-top:8px}.checkbox-wrapper input[type="checkbox"]{width:20px;height:20px}</style>
 </body>
 </html>

@@ -4,9 +4,6 @@ require_once '../includes/auth.php';
 require_once '../includes/helpers.php';
 
 requireLogin();
-
-$pdo = getDB();
-$landingPages = $pdo->query("SELECT * FROM landing_pages ORDER BY id DESC")->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -14,75 +11,81 @@ $landingPages = $pdo->query("SELECT * FROM landing_pages ORDER BY id DESC")->fet
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Landing Pages - Libidex Admin</title>
-    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f0f2f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: #fff; padding: 25px; border-radius: 12px; }
+        .header h1 { font-size: 24px; color: #333; }
+        .card { background: #fff; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+        .card-header { padding: 20px 25px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .card-header h2 { font-size: 18px; }
+        .page-item { display: flex; justify-content: space-between; align-items: center; padding: 20px 25px; border-bottom: 1px solid #f0f0f0; }
+        .page-item:last-child { border-bottom: none; }
+        .page-info h3 { font-size: 16px; margin-bottom: 5px; }
+        .page-info p { font-size: 13px; color: #888; }
+        .page-badge { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .badge-active { background: #d4edda; color: #155724; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+        .btn-sm { padding: 8px 15px; font-size: 13px; }
+        .sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100vh; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); color: #fff; padding: 20px; }
+        .sidebar-logo { padding: 20px 0; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .sidebar-logo h2 { font-size: 22px; }
+        .nav-item { padding: 14px 0; }
+        .nav-item a { color: rgba(255,255,255,0.7); text-decoration: none; display: flex; align-items: center; gap: 12px; }
+        .nav-item.active a { color: #667eea; font-weight: 600; }
+        .main { margin-left: 260px; }
+    </style>
 </head>
 <body>
-    <div class="wrapper">
-        <aside class="sidebar">
-            <div class="sidebar-logo"><h2>Libidex Admin</h2></div>
-            <ul class="sidebar-nav">
-                <li class="nav-item"><a href="../dashboard.php" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>Dashboard</a></li>
-                <li class="nav-item"><a href="../products/" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Products</a></li>
-                <li class="nav-item"><a href="index.php" class="nav-link active"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>Landing Pages</a></li>
-                <li class="nav-item"><a href="../orders/" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>Orders</a></li>
-                <li class="nav-item"><a href="../users/" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>Users</a></li>
-                <li class="nav-item"><a href="../settings.php" class="nav-link"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Settings</a></li>
-            </ul>
-        </aside>
-        
-        <main class="main-content">
+    <div class="sidebar">
+        <div class="sidebar-logo"><h2>Libidex Admin</h2></div>
+        <div class="nav-item"><a href="../dashboard.php">📊 Dashboard</a></div>
+        <div class="nav-item"><a href="../orders/">📦 Orders</a></div>
+        <div class="nav-item"><a href="../products/">🏷️ Products</a></div>
+        <div class="nav-item active"><a href="index.php">🌐 Landing Pages</a></div>
+        <div class="nav-item"><a href="../reviews/">⭐ Reviews</a></div>
+        <div class="nav-item"><a href="../settings.php">⚙️ Settings</a></div>
+        <div class="nav-item"><a href="../logout.php">🚪 Logout</a></div>
+    </div>
+    
+    <div class="main">
+        <div class="container">
             <div class="header">
-                <h1>Landing Pages</h1>
-                <div class="header-actions">
-                    <a href="../index.html" target="_blank" class="btn btn-view-site"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>View Website</a>
-                    <a href="create.php" class="btn btn-sm btn-add"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Add Landing Page</a>
-                    <div class="user-info"><div class="user-avatar"><?php echo strtoupper(substr($_SESSION['admin_username'], 0, 1)); ?></div><span><?php echo htmlspecialchars($_SESSION['admin_username']); ?></span></div>
-                    <a href="../logout.php" class="btn btn-logout">Logout</a>
-                </div>
+                <h1>🌐 Landing Pages</h1>
+                <a href="../index.html" target="_blank" class="btn btn-primary">👁️ View Website</a>
             </div>
-            
-            <?php $flash = getFlash(); if ($flash): ?><div class="alert alert-<?php echo $flash['type'] === 'success' ? 'success' : 'error'; ?>"><?php echo $flash['message']; ?></div><?php endif; ?>
             
             <div class="card">
                 <div class="card-header">
-                    <h2>All Landing Pages (<?php echo count($landingPages); ?>)</h2>
-                    <a href="create.php" class="btn btn-sm btn-add">Add New</a>
+                    <h2>Available Landing Pages</h2>
                 </div>
-                <div class="card-body">
-                    <?php if (empty($landingPages)): ?>
-                        <div class="empty-state">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
-                            <p>No landing pages found.</p>
-                            <a href="create.php" class="btn btn-primary">Add Landing Page</a>
-                        </div>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table>
-                                <thead><tr><th>ID</th><th>Name</th><th>URL</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
-                                <tbody>
-                                    <?php foreach ($landingPages as $page): ?>
-                                        <tr>
-                                            <td>#<?php echo $page['id']; ?></td>
-                                            <td><strong><?php echo htmlspecialchars($page['name']); ?></strong></td>
-                                            <td><a href="<?php echo htmlspecialchars($page['landing_url']); ?>" target="_blank" class="btn-call"><?php echo htmlspecialchars(substr($page['landing_url'], 0, 50)); ?>...</a></td>
-                                            <td><?php if ($page['is_active']): ?><span class="badge badge-success">Active</span><?php else: ?><span class="badge badge-danger">Inactive</span><?php endif; ?></td>
-                                            <td><?php echo formatDate($page['created_at']); ?></td>
-                                            <td>
-                                                <div class="actions">
-                                                    <a href="<?php echo htmlspecialchars($page['landing_url']); ?>" target="_blank" class="btn btn-sm btn-view">View</a>
-                                                    <a href="edit.php?id=<?php echo $page['id']; ?>" class="btn btn-sm btn-edit">Edit</a>
-                                                    <a href="delete.php?id=<?php echo $page['id']; ?>" class="btn btn-sm btn-delete" onclick="return confirm('Delete this landing page?')">Delete</a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
+                
+                <div class="page-item">
+                    <div class="page-info">
+                        <h3>🛒 ProMan Landing Page</h3>
+                        <p>pro-man-o8qm.onrender.com | /landing/proman/index.html</p>
+                    </div>
+                    <div>
+                        <span class="page-badge badge-active">Active</span>
+                        <a href="edit.php?page=proman" class="btn btn-primary btn-sm">✏️ Edit</a>
+                    </div>
+                </div>
+                
+                <div class="page-item">
+                    <div class="page-info">
+                        <h3>💊 Libidex Landing Page</h3>
+                        <p>libidex-site.onrender.com | /index.html</p>
+                    </div>
+                    <div>
+                        <span class="page-badge badge-active">Active</span>
+                        <a href="edit.php?page=libidex" class="btn btn-primary btn-sm">✏️ Edit</a>
+                    </div>
                 </div>
             </div>
-        </main>
+        </div>
     </div>
 </body>
 </html>
