@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../../admin/config/database.php';
+require_once '/var/www/html/admin/config/database.php';
 initDB();
 
 $name = isset($_POST['name']) ? trim($_POST['name']) : '';
