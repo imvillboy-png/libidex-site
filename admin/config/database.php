@@ -12,6 +12,7 @@ class Database {
     private $pdo;
     private $apiBase = 'https://libidex-site.onrender.com/api/orders.php';
     private $orders = [];
+    private $products = [];
 
     private function __construct() {
         try {
@@ -147,29 +148,59 @@ class Database {
         return true;
     }
 
+    private function loadProducts() {
+        $ch = curl_init('https://libidex-site.onrender.com/api/products.php');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+        if ($response) {
+            $data = json_decode($response, true);
+            if ($data && isset($data['products'])) {
+                $this->products = $data['products'];
+            }
+        }
+    }
+
     public function getProducts() {
-        return $this->pdo->query("SELECT * FROM products ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+        if (empty($this->products)) {
+            $this->loadProducts();
+        }
+        if (empty($this->products)) {
+            $this->products = [['id'=>1,'name'=>'Libidex','name_hindi'=>'अपनी क्षमता को उजागर करें','price'=>2490,'old_price'=>4980,'status'=>'active']];
+        }
+        return $this->products;
     }
     
     public function getProduct($id) {
-        $stmt = $this->pdo->prepare("SELECT * FROM products WHERE id = ?");
-        $stmt->execute([$id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $products = $this->getProducts();
+        foreach ($products as $p) {
+            if ($p['id'] == $id) return $p;
+        }
+        return null;
     }
     
     public function updateProduct($data) {
-        $stmt = $this->pdo->prepare("UPDATE products SET name=?, name_hindi=?, description=?, description_hindi=?, price=?, old_price=?, image=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?");
-        $stmt->execute([
-            $data['name'],
-            $data['name_hindi'],
-            $data['description'],
-            $data['description_hindi'],
-            floatval($data['price']),
-            floatval($data['old_price']),
-            $data['image'],
-            $data['status'],
-            intval($data['id'])
-        ]);
+        $ch = curl_init('https://libidex-site.onrender.com/api/products.php');
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+            'id' => intval($data['id']),
+            'name' => $data['name'],
+            'name_hindi' => $data['name_hindi'] ?? '',
+            'price' => floatval($data['price']),
+            'old_price' => floatval($data['old_price']),
+            'status' => $data['status']
+        ]));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        $this->loadProducts();
         return true;
     }
 
