@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/admin/config/database.php';
+initDB();
+
 $name = isset($_POST['name']) ? trim($_POST['name']) : '';
 $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
 $country = isset($_POST['country']) ? trim($_POST['country']) : 'IN';
