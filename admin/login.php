@@ -1,4 +1,5 @@
 <?php
+session_start();
 require_once 'config/database.php';
 require_once 'includes/auth.php';
 require_once 'includes/helpers.php';
@@ -9,7 +10,6 @@ if (isLoggedIn()) {
 }
 
 $error = '';
-$success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = sanitize($_POST['username'] ?? '');
@@ -18,19 +18,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($username) || empty($password)) {
         $error = 'Please enter both username and password.';
     } else {
-        $pdo = getDB();
-        $stmt = $pdo->prepare("SELECT id, username, password_hash, is_active FROM admin_users WHERE username = ? OR email = ?");
-        $stmt->execute([$username, $username]);
-        $user = $stmt->fetch();
+        $db = getDB();
+        $user = $db->getAdminUser($username);
         
-        if ($user && password_verify($password, $user['password_hash'])) {
-            if ($user['is_active']) {
-                login($user['id'], $user['username']);
-                header('Location: dashboard.php');
-                exit;
-            } else {
-                $error = 'Your account has been deactivated.';
-            }
+        if ($user && password_verify($password, $user['password'])) {
+            login($user['id'], $user['username']);
+            header('Location: dashboard.php');
+            exit;
         } else {
             $error = 'Invalid username or password.';
         }
@@ -43,40 +37,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login - Libidex</title>
-    <link rel="stylesheet" href="assets/css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .login-box { background: #fff; padding: 50px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 420px; }
+        .login-box h1 { text-align: center; margin-bottom: 10px; color: #333; font-size: 28px; }
+        .login-box p { text-align: center; color: #666; margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #555; }
+        .form-group input { width: 100%; padding: 14px; border: 2px solid #e1e1e1; border-radius: 10px; font-size: 14px; transition: all 0.3s; }
+        .form-group input:focus { border-color: #667eea; outline: none; }
+        .btn { width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 14px 30px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 500; }
+        .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #f5c6cb; }
+        .hint { text-align: center; margin-top: 20px; font-size: 12px; color: #999; }
+    </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-card">
-            <div class="login-header">
-                <div class="login-logo">L</div>
-                <h1>Libidex Admin</h1>
-                <p>Sign in to your admin panel</p>
+    <div class="login-box">
+        <h1><i class="fas fa-lock"></i></h1>
+        <p>Libidex Admin Panel</p>
+        
+        <?php if ($error): ?>
+            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+        
+        <form method="POST">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" required placeholder="Enter username">
             </div>
-            
-            <?php if ($error): ?>
-                <div class="alert alert-error"><?php echo $error; ?></div>
-            <?php endif; ?>
-            
-            <?php if ($success): ?>
-                <div class="alert alert-success"><?php echo $success; ?></div>
-            <?php endif; ?>
-            
-            <form method="POST" action="">
-                <div class="form-group">
-                    <label for="username">Username or Email</label>
-                    <input type="text" id="username" name="username" class="form-control" 
-                           value="<?php echo $_POST['username'] ?? ''; ?>" required autofocus>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" class="form-control" required>
-                </div>
-                
-                <button type="submit" class="btn btn-primary">Sign In</button>
-            </form>
-        </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" required placeholder="Enter password">
+            </div>
+            <button type="submit" class="btn">Login</button>
+        </form>
+        <p class="hint">Default: admin / admin123</p>
     </div>
 </body>
 </html>

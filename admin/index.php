@@ -8,6 +8,19 @@ initDB();
 $message = '';
 $message_type = '';
 
+$is_logged_in = $_SESSION['admin_logged_in'] ?? false;
+
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header('Location: index.php');
+    exit;
+}
+
+if ($is_logged_in) {
+    header('Location: dashboard.php');
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
         $db = getDB();

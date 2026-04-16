@@ -16,10 +16,7 @@ function login($userId, $username) {
     $_SESSION['admin_id'] = $userId;
     $_SESSION['admin_username'] = $username;
     $_SESSION['login_time'] = time();
-    
-    $pdo = getDB();
-    $stmt = $pdo->prepare("UPDATE admin_users SET last_login = NOW() WHERE id = ?");
-    $stmt->execute([$userId]);
+    $_SESSION['admin_logged_in'] = true;
 }
 
 function logout() {
