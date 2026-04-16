@@ -34,9 +34,10 @@ if (empty($name) || empty($phone)) {
             $password = getenv('DB_PASS') ?: '';
             
             try {
-                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
+                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=prefer";
                 $pdo = new PDO($dsn, $username, $password, array(
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_TIMEOUT => 10
                 ));
             } catch (PDOException $e) {
                 error_log("PostgreSQL connection failed: " . $e->getMessage());
