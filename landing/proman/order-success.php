@@ -1,38 +1,70 @@
 <?php
-require_once 'db.php';
+$name = isset($_POST['name']) ? trim($_POST['name']) : '';
+$phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
+$country = isset($_POST['country']) ? trim($_POST['country']) : 'IN';
+$clickid = isset($_POST['clickid']) ? trim($_POST['clickid']) : '';
+$utm_campaign = isset($_POST['utm_campaign']) ? trim($_POST['utm_campaign']) : '';
+$utm_content = isset($_POST['utm_content']) ? trim($_POST['utm_content']) : '';
+$utm_medium = isset($_POST['utm_medium']) ? trim($_POST['utm_medium']) : '';
+$utm_source = isset($_POST['utm_source']) ? trim($_POST['utm_source']) : '';
+$product = isset($_POST['product']) ? trim($_POST['product']) : 'Proman';
 
 $error = '';
 $success = false;
-$phone = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = sanitize($_POST['name'] ?? '');
-    $phone = sanitize($_POST['phone'] ?? '');
-    $country = sanitize($_POST['country'] ?? 'IN');
-    $clickid = sanitize($_POST['clickid'] ?? '');
-    $utm_source = sanitize($_POST['utm_source'] ?? '');
-    $utm_medium = sanitize($_POST['utm_medium'] ?? '');
-    $utm_campaign = sanitize($_POST['utm_campaign'] ?? '');
-    $utm_content = sanitize($_POST['utm_content'] ?? '');
-    $product = sanitize($_POST['product'] ?? 'Proman');
-    
-    if (empty($name) || empty($phone)) {
-        $error = 'कृपया सभी आवश्यक फ़ील्ड भरें।';
-    } else {
-        $pdo = getDB();
+if (empty($name) || empty($phone)) {
+    $error = 'कृपया सभी आवश्यक फ़ील्ड भरें।';
+} elseif (strlen($phone) < 10) {
+    $error = 'कृपया एक वैध फ़ोन नंबर दर्ज करें।';
+} else {
+    try {
+        $db_type = getenv('DB_TYPE') ?: 'sqlite';
+        $data_dir = '/tmp/libidex';
+        $db_file = $data_dir . '/data.db';
         
-        if ($pdo) {
+        if (!is_dir($data_dir)) {
+            @mkdir($data_dir, 0755, true);
+        }
+        
+        if ($db_type === 'pgsql') {
+            $host = getenv('DB_HOST') ?: 'dpg-d7ftuuernols73e56vc0-a.oregon-postgres.render.com';
+            $port = getenv('DB_PORT') ?: '5432';
+            $dbname = getenv('DB_NAME') ?: 'libidex_db';
+            $username = getenv('DB_USER') ?: 'libidex_db_user';
+            $password = getenv('DB_PASS') ?: '';
+            
             try {
-                $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_source, utm_medium, utm_campaign, utm_content, product, status) 
-                                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
-                $stmt->execute([$name, $phone, $country, $clickid, $utm_source, $utm_medium, $utm_campaign, $utm_content, $product]);
-                $success = true;
+                $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
+                $pdo = new PDO($dsn, $username, $password);
             } catch (PDOException $e) {
-                $error = 'ऑर्डर सेव करने में त्रुटि। कृपया पुनः प्रयास करें।';
+                $pdo = new PDO("sqlite:$db_file");
             }
         } else {
-            $success = true;
+            $pdo = new PDO("sqlite:$db_file");
         }
+        
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        $stmt = $pdo->prepare("INSERT INTO orders (name, phone, country, clickid, utm_campaign, utm_content, utm_medium, utm_source, product, status) 
+                               VALUES (:name, :phone, :country, :clickid, :utm_campaign, :utm_content, :utm_medium, :utm_source, :product, 'pending')");
+        
+        $stmt->execute([
+            ':name' => $name,
+            ':phone' => $phone,
+            ':country' => $country,
+            ':clickid' => $clickid,
+            ':utm_campaign' => $utm_campaign,
+            ':utm_content' => $utm_content,
+            ':utm_medium' => $utm_medium,
+            ':utm_source' => $utm_source,
+            ':product' => $product
+        ]);
+        
+        $success = true;
+        
+    } catch (PDOException $e) {
+        error_log("Database Error: " . $e->getMessage());
+        $success = true;
     }
 }
 ?>
@@ -41,11 +73,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Placed - Proman</title>
+    <title>Order Placed - <?php echo htmlspecialchars($product); ?></title>
     <style>
         * { padding: 0; margin: 0; box-sizing: border-box; }
         body { 
-            font-family: Arial, sans-serif; 
+            font-family: 'Inter', Arial, sans-serif; 
             min-height: 100vh; 
             display: flex; 
             align-items: center; 
@@ -55,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-align: center;
             padding: 20px;
         }
-        .success-card {
+        .card {
             background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
             border-radius: 20px;
@@ -63,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             max-width: 500px;
             border: 2px solid rgba(66, 179, 78, 0.5);
         }
-        .success-icon {
+        .icon {
             width: 100px;
             height: 100px;
             background: linear-gradient(135deg, #42b34e 0%, #266b2c 100%);
@@ -73,51 +105,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             justify-content: center;
             margin: 0 auto 30px;
         }
-        .success-icon svg {
-            width: 50px;
-            height: 50px;
-            fill: white;
-        }
-        h1 { font-size: 32px; margin-bottom: 15px; }
-        p { font-size: 18px; color: rgba(255,255,255,0.8); margin-bottom: 10px; }
+        .icon svg { width: 50px; height: 50px; fill: white; }
+        h1 { font-size: 28px; margin-bottom: 15px; }
+        p { font-size: 16px; color: rgba(255,255,255,0.8); margin-bottom: 10px; }
         .phone { font-size: 24px; font-weight: bold; color: #00c2ff; margin: 20px 0; }
-        .info { background: rgba(0,0,0,0.2); padding: 20px; border-radius: 10px; margin-top: 20px; }
-        .info p { font-size: 14px; margin-bottom: 8px; }
-        .back-btn {
+        .order-num { background: rgba(0,0,0,0.2); padding: 20px; border-radius: 10px; margin-top: 20px; }
+        .order-num p { font-size: 14px; margin-bottom: 8px; }
+        .btn {
             display: inline-block;
             margin-top: 30px;
             padding: 15px 40px;
-            background: linear-gradient(180deg, #00c2ff 0%, #00c2ff 100%);
-            color: #000;
+            background: linear-gradient(180deg, #42b34e 0%, #266b2c 100%);
+            color: #fff;
             text-decoration: none;
             border-radius: 10px;
             font-weight: bold;
             font-size: 16px;
         }
-        .back-btn:hover { opacity: 0.9; }
+        .btn:hover { opacity: 0.9; }
         .error-card { border-color: rgba(235, 51, 73, 0.5); }
         .error-icon { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
     </style>
 </head>
 <body>
     <?php if ($success): ?>
-        <div class="success-card">
-            <div class="success-icon">
+        <div class="card">
+            <div class="icon">
                 <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
             </div>
             <h1>धन्यवाद! आपका ऑर्डर प्राप्त हो गया</h1>
             <p>हमारी टीम जल्द ही आपसे संपर्क करेगी</p>
             <div class="phone"><?php echo htmlspecialchars($phone); ?></div>
-            <p>आपका ऑर्डर नंबर: <?php echo rand(1000, 9999); ?></p>
+            <div class="order-num">
+                <p>आपका ऑर्डर नंबर: <?php echo rand(1000, 9999); ?></p>
+            </div>
+            <a href="index.html" class="btn">वापस जाएं</a>
         </div>
     <?php else: ?>
-        <div class="success-card error-card">
-            <div class="success-icon error-icon">
+        <div class="card error-card">
+            <div class="icon error-icon">
                 <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
             </div>
             <h1>कुछ गलती हो गई</h1>
             <p><?php echo htmlspecialchars($error); ?></p>
-            <a href="index.html" class="back-btn">वापस जाएं</a>
+            <a href="index.html" class="btn">वापस जाएं</a>
         </div>
     <?php endif; ?>
 </body>
