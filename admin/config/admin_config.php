@@ -1,5 +1,5 @@
 <?php
-$ADMIN_CONFIG_FILE = __DIR__ . '/admin_config.json';
+$ADMIN_CONFIG_FILE = '/tmp/admin_config.json';
 
 function getAdminConfig() {
     global $ADMIN_CONFIG_FILE;
@@ -12,7 +12,7 @@ function getAdminConfig() {
 
 function saveAdminConfig($config) {
     global $ADMIN_CONFIG_FILE;
-    file_put_contents($ADMIN_CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT));
+    @file_put_contents($ADMIN_CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT));
 }
 
 function getDefaultAdminHash() {
