@@ -17,14 +17,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     
     if (empty($username) || empty($password)) {
-        $error = 'Please enter both username and password.';
+        $error = 'Please enter credentials.';
     } else {
         if ($username === 'admin' && password_verify($password, getAdminPasswordHash())) {
             login(1, 'admin');
             header('Location: dashboard.php');
             exit;
         } else {
-            $error = 'Invalid username or password.';
+            $error = 'Invalid credentials.';
         }
     }
 }
@@ -34,41 +34,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login - Libidex</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>Admin - Login</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .login-box { background: #fff; padding: 50px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 420px; }
-        .login-box h1 { text-align: center; margin-bottom: 10px; color: #333; font-size: 28px; }
-        .login-box p { text-align: center; color: #666; margin-bottom: 30px; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0f0f1a; }
+        .login-box { background: #1a1a2e; padding: 50px; border-radius: 20px; width: 100%; max-width: 400px; }
+        .login-box h1 { text-align: center; margin-bottom: 30px; color: #fff; font-size: 24px; letter-spacing: 2px; }
         .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #555; }
-        .form-group input { width: 100%; padding: 14px; border: 2px solid #e1e1e1; border-radius: 10px; font-size: 14px; transition: all 0.3s; }
+        .form-group input { width: 100%; padding: 16px; background: #0f0f1a; border: 1px solid #333; border-radius: 10px; color: #fff; font-size: 14px; }
         .form-group input:focus { border-color: #667eea; outline: none; }
-        .btn { width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 14px 30px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 500; }
-        .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #f5c6cb; }
+        .btn { width: 100%; background: #667eea; color: #fff; padding: 16px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; letter-spacing: 1px; }
+        .btn:hover { background: #5a6fd6; }
+        .error { background: rgba(220, 53, 69, 0.2); color: #ff6b6b; padding: 12px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-size: 13px; }
     </style>
 </head>
 <body>
     <div class="login-box">
-        <h1><i class="fas fa-lock"></i></h1>
-        <p>Libidex Admin Panel</p>
+        <h1>ADMIN</h1>
         
         <?php if ($error): ?>
             <div class="error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
         
-        <form method="POST">
+        <form method="POST" autocomplete="off">
             <div class="form-group">
-                <label>Username</label>
-                <input type="text" name="username" required placeholder="Enter username">
+                <input type="text" name="username" required autocomplete="off" autofocus>
             </div>
             <div class="form-group">
-                <label>Password</label>
-                <input type="password" name="password" required placeholder="Enter password">
+                <input type="password" name="password" required autocomplete="off">
             </div>
-            <button type="submit" class="btn">Login</button>
+            <button type="submit" class="btn">LOGIN</button>
         </form>
     </div>
 </body>
