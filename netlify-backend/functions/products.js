@@ -8,6 +8,11 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+const defaultProducts = [
+    { id: 1, name: 'Libidex', name_hindi: 'पुरुषों की शक्ति बढ़ाने का कैप्सूल', price: 2490, old_price: 4980, image: 'product-1.png', status: 'active' },
+    { id: 2, name: 'ProMan', name_hindi: 'पुरुषों के लिए एनर्जी कैप्सूल', price: 1990, old_price: 3990, image: 'product-1.png', status: 'active' }
+];
+
 exports.handler = async (event, context) => {
     if (event.httpMethod === 'OPTIONS') {
         return { statusCode: 200, headers: corsHeaders, body: '' };
@@ -16,10 +21,7 @@ exports.handler = async (event, context) => {
     try {
         if (event.httpMethod === 'GET') {
             const productsJson = await store.get('products', { type: 'json' });
-            const products = productsJson || [
-                { id: 1, name: 'Libidex', name_hindi: 'पुरुषों की शक्ति बढ़ाने का कैप्सूल', price: 2490, old_price: 4980, image: 'product-1.png', status: 'active' },
-                { id: 2, name: 'ProMan', name_hindi: 'पुरुषों के लिए एनर्जी कैप्सूल', price: 1990, old_price: 3990, image: 'product-1.png', status: 'active' }
-            ];
+            const products = productsJson || defaultProducts;
             const activeProducts = products.filter(p => p.status === 'active');
             return {
                 statusCode: 200,
@@ -47,10 +49,7 @@ exports.handler = async (event, context) => {
             }
 
             const productsJson = await store.get('products', { type: 'json' });
-            let products = productsJson || [
-                { id: 1, name: 'Libidex', name_hindi: 'पुरुषों की शक्ति बढ़ाने का कैप्सूल', price: 2490, old_price: 4980, image: 'product-1.png', status: 'active' },
-                { id: 2, name: 'ProMan', name_hindi: 'पुरुषों के लिए एनर्जी कैप्सूल', price: 1990, old_price: 3990, image: 'product-1.png', status: 'active' }
-            ];
+            let products = productsJson || defaultProducts;
             
             const productIndex = products.findIndex(p => p.id === id);
             if (productIndex !== -1) {
@@ -81,7 +80,7 @@ exports.handler = async (event, context) => {
         return {
             statusCode: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: error.message })
+            body: JSON.stringify({ error: error.message, stack: error.stack })
         };
     }
 };

@@ -1,5 +1,5 @@
 [build]
-  command = "npm install @netlify/blobs"
+  command = ""
   functions = "netlify-backend/functions"
   publish = "."
 

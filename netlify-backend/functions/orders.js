@@ -135,7 +135,7 @@ exports.handler = async (event, context) => {
         return {
             statusCode: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: error.message })
+            body: JSON.stringify({ error: error.message, stack: error.stack })
         };
     }
 };
