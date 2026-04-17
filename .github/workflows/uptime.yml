@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Libidex Site
-        run: curl -s -o /dev/null -w "%{http_code}" https://libidex-site.onrender.com || true
+        run: curl -s -o /dev/null -w "%{http_code}" https://libidex-site.netlify.app || true
 
-      - name: Ping ProMan Site
-        run: curl -s -o /dev/null -w "%{http_code}" https://pro-man-o8qm.onrender.com || true
+      - name: Ping Admin Panel
+        run: curl -s -o /dev/null -w "%{http_code}" https://libidex-admin.netlify.app || true
 
-      - name: Ping API
-        run: curl -s -o /dev/null -w "%{http_code}" https://libidex-site.onrender.com/api/orders.php || true
+      - name: Ping Orders API
+        run: curl -s -o /dev/null -w "%{http_code}" https://libidex-site.netlify.app/.netlify/functions/orders || true
