@@ -1,0 +1,60 @@
+# Libidex YouTube Video Script (Hindi)
+
+## TITLE OPTIONS:
+- "Libidex Review in Hindi | क्या यह सच में काम करता है?"
+- "Libidex Capsule Review - पुरुषों की शक्ति बढ़ाने का तरीका"
+- "Libidex Honest Review | 1 Month Experience"
+
+## VIDEO SCRIPT:
+
+---
+
+### INTRO (0:00 - 0:30)
+"Namaste dosto! Aaj main baat karunga ek aisi product ke baare mein jiska naam hai Libidex. Maine personally ise try kiya hai aur aaj main bataunga ki ye product actually kaam karta hai ya nahi."
+
+### WHAT IS LIBIDEX (0:30 - 1:30)
+"Libidex ek natural herbal capsule hai jo men ki power, stamina aur confidence badhane mein help karta hai. Isme natural ingredients hain jaise Ginseng, L-Arginine aur Mucuna Pruriens."
+
+"Ye fully Ayurvedic hai, matlab isme koi side effects nahi hain."
+
+### MY EXPERIENCE (1:30 - 3:00)
+"Main personally ise 1 month tak le raha tha aur results dekhne ko mila..."
+
+[Ya apna experience likho yahan]
+
+"Pehle 2 weeks mein zyada energy feel hui, aur 1 month ke baad bahut improvement hua."
+
+### HOW TO USE (3:00 - 3:30)
+"Libidex lene ka tarika bahut simple hai - din mein 2 baar ek capsule khali pet pani ke saath. Kam se kam 30 days le."
+
+### PRICE & WHERE TO BUY (3:30 - 4:00)
+"Agr aapko Libidex chahiye toh main link de raha hun description mein. Promotional price sirf ₹2490 hai, ye ₹4980 se hai."
+
+### OUTRO (4:00 - 4:15)
+"Agar aapko ye video helpful lagi toh LIKE karo aur CHANNEL SUBSCRIBE karo. Questions ho toh COMMENT karo."
+
+---
+
+## DESCRIPTION TEMPLATE:
+```
+Libidex Review in Hindi | Honest Experience
+
+Libidex - पुरुषों की शक्ति और आत्मविश्वास बढ़ाने का प्राकृतिक समाधान
+
+✅ 100% Natural Ingredients
+✅ No Side Effects  
+✅ Fast Results
+✅ Made in India
+
+ORDER HERE: https://libidex-site.netlify.app/
+
+DISCLAIMER: This video is my personal experience. Results may vary.
+
+#LibidexReview #MensHealth #AyurvedicMedicine #StaminaBooster #MensHealthTips
+```
+
+## THUMBNAIL TEXT:
+"LIBIDEX REVIEW 🔥 सच क्या है?"
+"1 MONTH AFTER using Libidex..."
+```
+

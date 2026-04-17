@@ -1,0 +1,8 @@
+name = "libidex-api"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "libidex-db"
+database_id = "ad67f907-3e85-45f1-a924-80db1e2117cd"

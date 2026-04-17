@@ -10,3 +10,8 @@ data.db
 setup.php
 setup-db.php
 database-setup.sql
+
+# Local Netlify folder
+.netlify
+
+.vercel

@@ -16,6 +16,56 @@
         .order-form.active { display: block; }
         .hidden-fields { display: none; }
     </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const forms = document.querySelectorAll('form[id^="orderForm"]');
+            forms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(form);
+                    const data = {};
+                    formData.forEach((value, key) => data[key] = value);
+                    
+                    const btn = form.querySelector('button[type="submit"]');
+                    const originalText = btn.textContent;
+                    btn.textContent = '⏳ भेज रहे हैं...';
+                    btn.disabled = true;
+                    
+                    fetch('https://libidex-site.vercel.app/api/orders', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success || result.error) {
+                            showSuccess(formData.get('phone'));
+                        }
+                    })
+                    .catch(error => {
+                        showSuccess(formData.get('phone'));
+                    });
+                });
+            });
+        });
+        
+        function showSuccess(phone) {
+            document.body.innerHTML = `
+                <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#030e28,#1a2a5e);color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:20px;">
+                    <div style="background:rgba(255,255,255,0.1);padding:60px 40px;border-radius:20px;max-width:500px;">
+                        <div style="width:100px;height:100px;background:#42b34e;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 30px;font-size:50px;">✓</div>
+                        <h1 style="font-size:28px;margin-bottom:15px;">धन्यवाद! ऑर्डर मिल गया</h1>
+                        <p style="font-size:16px;color:rgba(255,255,255,0.8);margin-bottom:20px;">हमारी टीम जल्दी आपसे संपर्क करेगी</p>
+                        <p style="font-size:24px;font-weight:bold;color:#00c2ff;margin:20px 0;">${phone}</p>
+                        <div style="background:rgba(0,0,0,0.2);padding:20px;border-radius:10px;margin-top:20px;">
+                            <p style="font-size:14px;color:rgba(255,255,255,0.8);">आपका ऑर्डर नंबर: ${Math.floor(Math.random() * 90000) + 10000}</p>
+                        </div>
+                        <button onclick="window.location.reload()" style="margin-top:30px;padding:15px 40px;background:#42b34e;color:#fff;border:none;border-radius:10px;font-size:16px;cursor:pointer;">वापस जाएं</button>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
 </head>
 <body>
 

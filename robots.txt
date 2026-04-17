@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://libidex-site.netlify.app/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1
+
+# Block bad bots (optional)
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /

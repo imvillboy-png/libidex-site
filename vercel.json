@@ -1,0 +1,21 @@
+{
+  "builds": [
+    {
+      "src": "api/orders.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/products.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/reviews.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    { "src": "/api/orders", "dest": "/api/orders.js" },
+    { "src": "/api/products", "dest": "/api/products.js" },
+    { "src": "/api/reviews", "dest": "/api/reviews.js" }
+  ]
+}

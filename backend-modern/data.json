@@ -1,0 +1,14 @@
+{
+  "orders": [
+    {"id": "ord_test1", "name": "Test User", "phone": "9876543210", "country": "IN", "product": "Libidex", "clickid": "", "utm_campaign": "", "utm_source": "", "status": "pending", "created_at": "2026-04-17T00:00:00.000Z"}
+  ],
+  "products": [
+    {"id": 1, "name": "Libidex", "name_hindi": "पुरुषों की शक्ति बढ़ाने का कैप्सूल", "price": 2490, "old_price": 4980, "image": "product-1.png", "status": "active"},
+    {"id": 2, "name": "ProMan", "name_hindi": "पुरुषों के लिए एनर्जी कैप्सूल", "price": 1990, "old_price": 3990, "image": "product-1.png", "status": "active"}
+  ],
+  "reviews": [
+    {"id": 1, "name": "राजेश, 42", "age": "42", "review_text": "3 महीने से ज्यादा समय से ले रहा हूं। परिणाम शानदार हैं!", "image": "live-1.jpg", "status": "active"},
+    {"id": 2, "name": "अमित, 38", "age": "38", "review_text": "6 हफ्ते में बहुत सुधार हुआ। मेरी पत्नी भी खुश है।", "image": "live-1.jpg", "status": "active"},
+    {"id": 3, "name": "संजय, 45", "age": "45", "review_text": "बेहतर ऊर्जा और आत्मविश्वास। Highly recommended!", "image": "live-1.jpg", "status": "active"}
+  ]
+}
