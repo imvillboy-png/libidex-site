@@ -31,7 +31,7 @@
                     btn.textContent = '⏳ भेज रहे हैं...';
                     btn.disabled = true;
                     
-                    fetch('https://libidex-site.vercel.app/api/orders', {
+                    fetch('https://libidex-site.netlify.app/.netlify/functions/orders', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)

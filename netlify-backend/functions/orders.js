@@ -1,12 +1,10 @@
-const { getStore } = require('@netlify/blobs');
-
-const store = getStore('orders-data');
-
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
 };
+
+let orders = [];
 
 exports.handler = async (event, context) => {
     if (event.httpMethod === 'OPTIONS') {
@@ -15,8 +13,6 @@ exports.handler = async (event, context) => {
 
     try {
         if (event.httpMethod === 'GET') {
-            const ordersJson = await store.get('orders', { type: 'json' });
-            const orders = ordersJson || [];
             return {
                 statusCode: 200,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -51,10 +47,7 @@ exports.handler = async (event, context) => {
             const id = 'ord_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
             const order = { id, name, phone, country, product, clickid, utm_campaign, utm_source, status: 'pending', created_at: new Date().toISOString() };
             
-            const ordersJson = await store.get('orders', { type: 'json' });
-            const orders = ordersJson || [];
             orders.unshift(order);
-            await store.set('orders', JSON.stringify(orders));
 
             return {
                 statusCode: 200,
@@ -81,12 +74,9 @@ exports.handler = async (event, context) => {
                 };
             }
 
-            const ordersJson = await store.get('orders', { type: 'json' });
-            const orders = ordersJson || [];
             const orderIndex = orders.findIndex(o => o.id === id);
             if (orderIndex !== -1) {
                 orders[orderIndex].status = status;
-                await store.set('orders', JSON.stringify(orders));
             }
 
             return {
@@ -114,10 +104,7 @@ exports.handler = async (event, context) => {
                 };
             }
 
-            const ordersJson = await store.get('orders', { type: 'json' });
-            const orders = ordersJson || [];
-            const filteredOrders = orders.filter(o => o.id !== id);
-            await store.set('orders', JSON.stringify(filteredOrders));
+            orders = orders.filter(o => o.id !== id);
 
             return {
                 statusCode: 200,
@@ -135,7 +122,7 @@ exports.handler = async (event, context) => {
         return {
             statusCode: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: error.message, stack: error.stack })
+            body: JSON.stringify({ error: error.message })
         };
     }
 };

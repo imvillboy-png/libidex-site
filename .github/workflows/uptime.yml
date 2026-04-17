@@ -9,8 +9,8 @@ jobs:
   ping-sites:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Vercel API
-        run: curl -s -o /dev/null -w "%{http_code}" https://libidex-site.vercel.app/api/orders || true
+      - name: Ping Netlify Site
+        run: curl -s -o /dev/null -w "%{http_code}" https://libidex-site.netlify.app || true
 
-      - name: Ping Vercel Site
-        run: curl -s -o /dev/null -w "%{http_code}" https://libidex-site.vercel.app || true
+      - name: Ping Orders API
+        run: curl -s -o /dev/null -w "%{http_code}" https://libidex-site.netlify.app/.netlify/functions/orders || true

@@ -11,11 +11,25 @@
     {
       "src": "api/reviews.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "**/*.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "images/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "js/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     { "src": "/api/orders", "dest": "/api/orders.js" },
     { "src": "/api/products", "dest": "/api/products.js" },
-    { "src": "/api/reviews", "dest": "/api/reviews.js" }
+    { "src": "/api/reviews", "dest": "/api/reviews.js" },
+    { "src": "/", "dest": "/index.html" },
+    { "src": "/(.*)", "dest": "/$1" }
   ]
 }
