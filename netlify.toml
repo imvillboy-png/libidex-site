@@ -1,0 +1,7 @@
+[build]
+  command = "npm install @netlify/blobs"
+  functions = "netlify-backend/functions"
+  publish = "."
+
+[build.environment]
+  NODE_VERSION = "18"
